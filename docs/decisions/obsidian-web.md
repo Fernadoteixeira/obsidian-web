@@ -33,6 +33,36 @@ binary round-trip → rename/delete/copy → reload persists → אפס רגרס
 - **פיבוט client-only מלא (בלי שרת)** — כבר נדחה ב-`future-direction-client-only.md`;
   per-vault הוא strictly more general. השרת הסטטי נשאר (bundle + assets).
 
+## 2026-07-15 — OPFS milestone (opfs-store + opfs-wire): הושלם ואומת GO, מגבלות ידועות
+
+### רציונל
+מילסטון "OPFS מתפקד במלואו על המובייל, עצמאי מ-LiveSync" (ראה החלטת OPFS-first לעיל) מומש
+בשני slices משורשרים:
+- **opfs-store** — מודול `src/client-mobile/storage/opfs-store.js`, כל 23 מתודות ה-Filesystem על OPFS.
+  אביגיל READY (סבב 2), כלב GO (11/11, אימות Firefox אמיתי, כל 5 אסרשני flat-list PASS).
+- **opfs-wire** — dispatcher HTTP↔OPFS ב-capacitor-shim (Proxy עם bind), registry ב-localStorage,
+  ניתוב vault-type + דילוג bootstrap ב-boot, עמוד יצירה מינימלי. אביגיל READY (סבב 2),
+  כלב-heavy GO (9/9, אפס רגרסיות ל-server vaults, Proxy/bind/bootstrap-skip אומתו על OPFS אמיתי).
+
+### מגבלות ידועות (מתועדות, לא-חוסמות — נרשמות ל-slices הבאים)
+- **F1 (opfs-ux / attachment story)**: `cap.convertFileSrc` (capacitor-shim.js) מחזיר תמיד HTTP
+  `/api/fs/read` URL, לא מסתעף על `__owVaultType`. ל-local vault, attachments בינאריים גדולים
+  (תמונות/PDF דרך `<img src>`) יפגעו בשרת במקום OPFS → attachment שבור. **core note editing לא מושפע**
+  (הולך דרך ה-Proxy readFile). הסינכרוניות של convertFileSrc מול async getUri הופכת את התיקון
+  ללא-טריוויאלי — ולכן נדחה מפורשות ל-opfs-ux/attachments, לא תוקן ב-opfs-wire (מחוץ ל-§2 scope).
+- **F2 (מגבלת סביבת-אימות, לא defect)**: `vendor/obsidian-mobile/` לא-מוותר בסביבת כלב → render מלא
+  של ה-file-explorer UI דרך אפליקציית Obsidian לא נבדק. **כל מה שהסלייס שינה אומת בדפדפן אמיתי על
+  OPFS אמיתי** (dispatcher, wiring, flat-list contract, bootstrap-skip, bind). נדרש אימות ויזואלי
+  אחד של ה-DOM כש-`vendor/obsidian-mobile/` נוכח (`scripts/update-obsidian-mobile.js`).
+
+### נדחה במפורש ל-slices הבאים
+- **opfs-ux**: starter UI מלא (מיזוג לרשימת Obsidian), setup wizard, guard ל-desktop
+  `/?vault=<local-id>`, מחיקת OPFS ב-registry.remove, תיקון F1, docs.
+- **system-plugins ב-local vault** (layout switcher) + **LiveSync** — אחרי שה-OPFS מוכח ומאושר.
+
+### פשרת עמידות (ממשיכה מהחלטת OPFS-first)
+local vault עדיין בלי גיבוי עד ש-LiveSync יחובר — פשרה מקובלת למילסטון-ההדגמה.
+
 ## 2026-06-13 — PR #9 shims: opt-in דרך env var, לא ברירת-מחדל (החלטת המשתמשת)
 
 > החלטה צופה-קדימה. נאכפת בסלייס **client-wiring** העתידי (שם יש לה שיניים), לא ב-server-shims הנוכחי. נכתבה כאן כדי לכוון את ה-brief של client-wiring כשייכתב.
