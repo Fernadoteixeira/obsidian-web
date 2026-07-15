@@ -331,4 +331,6 @@ const Filesystem = new Proxy({}, {
 
 ## ‏סטיות מהתכנון (‏מתעדכן ע"י executor ‏תוך כדי)
 
-- ‏(‏ריק)
+- **‏אין דפדפן זמין לאליעזר בסביבת ‏הביצוע** (`google-chrome`/`chromium`/`playwright` — ‏not found). ‏לפי ‏ההנחיה ‏המפורשת ‏של ‏הדיספאצ'ר: ‏ביצעתי syntax-check (`bun build`) + ‏HTTP 200 ‏לעמודים + ‏regression ‏על ‏21 ‏ה-unit tests ‏בכל commit ‏שדרש integration, ‏ותיעדתי ‏שה-E2E ‏המלא (‏כולל ‏§4 "Verification E2E", DoD ‏#1-7) ‏נדחה ‏ל-`calev-heavy` ‏בסוף ‏ה-slice ‏(‏שממילא ‏מיועד ‏ל-E2E ‏מובייל ‏מלא ‏לפי §8).
+- **server vault ‏לרגרסיה (DoD#7)**: ‏ה-registry ‏בשרת ‏היה ‏ריק. ‏רשמתי ‏את ‏ה-`user-data/demo-vault` ‏הקיים ‏דרך `POST /api/vaults/open` → id `2dcc8ee4cd76d045`. ‏זה ‏ה-vault ‏שישמש ‏לבדיקת ‏רגרסיה.
+- ‏(‏שאר ‏הסלייס ‏בהתאם ‏לבריף ‏ללא סטייה)

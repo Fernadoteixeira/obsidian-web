@@ -1841,3 +1841,32 @@ middleware פשוט שלוגר בקשות ל-`/api`, `/i18n`, `/lib` כדי שנ
 - Testing strategy: manual/syntax (brief §4, Commit 0)
 - `bun build src/client/local-vault-registry.js --outdir /tmp/synccheck`: 0 שגיאות
 - `bun test src/client-mobile/test/`: 21/21 ירוקים (baseline sanity — לא נגענו בקבצים האלה)
+
+---
+
+## 2026-07-15 — slice opfs-wire, Commit 1
+
+### ניתוב vault-type + branch ב-boot.js (local↔server, דילוג bootstrap)
+
+**Commit 1** של slice `opfs-wire`:
+
+#### מה בוצע
+- **עריכה: `src/client-mobile/boot.js`**:
+  - **(א)** מיד אחרי `VAULT_ID` — `VAULT_TYPE = __owLocalVaults.has(VAULT_ID) ? 'local' : 'server'`, נחשף כ-`window.__owVaultType`/`window.__owVaultId`, ולוג קונסול.
+  - **(ב)** בלוק אימות ה-vault — `branch`: `local` → `navigator.storage.getDirectory()` → `getDirectoryHandle('vaults', {create:true})` → `getDirectoryHandle(VAULT_ID, {create:true})` (idempotent, יוצר את תיקיית ה-vault ב-OPFS אם עוד לא קיימת); `server` → אותה קריאת `fetch('/api/fs/stat?...')` כמו קודם, ללא שינוי התנהגות.
+  - **(ג) — הנקודה הקריטית**: בלוק ה-`/api/bootstrap?...&full=1` עטוף עכשיו ב-`if (VAULT_TYPE === 'server') { ... }`. ל-local vaults אין קריאת bootstrap כלל (אין endpoint כזה בשרת ל-local — §2 בבריף). **הזרקת ה-Obsidian scripts (i18next/enhance/i18n/app.js, לולאת `MOBILE_SCRIPTS`) נשארה מחוץ ל-`if`, ללא שינוי** — קורית בשני הנתיבים באותו אופן בדיוק, כפי שהבריף דרש במפורש.
+- 0 שינויים לקבצים אחרים.
+
+#### חריגה טכנית — אין דפדפן (Testing strategy = integration, לפי מגבלת הסביבה)
+- הבריף קבע Testing=integration לקומיט הזה, אבל הקוד הזה תלוי לחלוטין ב-DOM API של דפדפן אמיתי (`navigator.storage.getDirectory()`, script injection, MutationObserver) — אין אפשרות להריץ בו integration test אמיתי ב-Node/bun (אין OPFS ב-Node). לפי ההנחיה המפורשת של הדיספאצ'ר למקרה שאין gui-host: ביצעתי syntax-check + HTTP 200 + regression על ה-unit tests, ותיעדתי שה-E2E המלא (הבדיקה מ-§4 "Verification E2E") נדחה ל-`calev-heavy` בסוף ה-slice.
+- `bun build src/client-mobile/boot.js --outdir /tmp/synccheck` — 0 שגיאות פרסינג.
+- הרצתי שרת (`PORT=4001 node index.js`, כי 4000 תפוס ע"י תהליך קיים — לא נגעתי בו): `curl` ל-`/mobile`, `/client-mobile/boot.js`, `/client/local-vault-registry.js` — כולם **200**.
+- **הכנת vault שרת לרגרסיה (DoD#7)**: ה-registry בשרת היה ריק (`/api/vaults/list` → `{}`). רשמתי את `user-data/demo-vault` הקיים דרך `POST /api/vaults/open` → id `2dcc8ee4cd76d045`. אימתתי `/api/fs/stat` ו-`/api/fs/read` עליו — עובד. ה-vault הזה ישמש לבדיקת רגרסיה (§5 DoD#7) בסוף ה-slice / ע"י calev-heavy.
+- `bun test src/client-mobile/test/`: 21/21 ירוקים (regression check — הקוד שלנו לא נוגע במודולים האלה).
+
+#### בדיקות
+- Testing strategy: integration (brief §4, Commit 1) — ביצוע חלקי בגלל מגבלת סביבה (אין דפדפן); syntax + HTTP 200 + unit-regression בוצעו כאן, E2E מלא (כולל דילוג bootstrap בפועל, DoD#6) → calev-heavy.
+- `bun build`: 0 שגיאות
+- HTTP 200: `/mobile`, `/client-mobile/boot.js`, `/client/local-vault-registry.js`
+- `bun test src/client-mobile/test/`: 21/21 ירוקים
+- server vault לרגרסיה מוכן: id `2dcc8ee4cd76d045` (demo-vault)
