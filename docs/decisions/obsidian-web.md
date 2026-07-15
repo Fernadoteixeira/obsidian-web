@@ -33,6 +33,34 @@ binary round-trip → rename/delete/copy → reload persists → אפס רגרס
 - **פיבוט client-only מלא (בלי שרת)** — כבר נדחה ב-`future-direction-client-only.md`;
   per-vault הוא strictly more general. השרת הסטטי נשאר (bundle + assets).
 
+## 2026-07-15 — OPFS milestone: הושלם **באמת** (UI מרונדר על OPFS) — 4 slices, 2 באגים שה-preview חשף
+
+### מה קרה
+בקשת המשתמשת "לראות preview שהכל רץ ב-OPFS" חשפה ש-2 האימותים הראשונים (opfs-store GO,
+opfs-wire GO) היו **מוקדמים מדי** — הם אימתו את שכבת-הנתונים אבל **לא את ה-UI בפועל**, כי
+`vendor/obsidian-mobile/` (bundle של Obsidian) היה חסר בסביבה. ברגע שהבאנו את ה-bundle
+(`scripts/update-obsidian-mobile.js`) והרצנו render אמיתי — התגלו **2 באגים** שחסמו את פתיחת ה-vault:
+
+1. **opfs-geturi-fix**: `OpfsStore.getUri({path:''})` זרק (אין טיפול בשורש); `rethrowAsEnoent` הדליף
+   DOMException. Obsidian קורא getUri בשורש ב-vault-open. תוקן ב-OpfsStore (concern vault-relative).
+2. **opfs-vault-path**: `OpfsStore` לא הסיר קידומת vaultId (Obsidian מקדים אותה לכל קריאה);
+   `HttpFilesystem.fullPath` כן. תוקן ב-**dispatcher** (capacitor-shim, reuse fullPath) — לא ב-OpfsStore,
+   כדי לשמור אותו נקי (vault-relative) ל-LiveSync העתידי. שתי חקירות עצמאיות + fix-simulation אישרו.
+
+### תובנת-שיטה (קטגוריה-1, נרשמת ל-reports/patterns)
+שני הבאגים = **אותו חור-כיסוי**: צורת הנתיב ש-Obsidian שולחת בפועל (vaultId-prefixed) מעולם לא נבדקה
+— לא ב-unit tests, לא ב-self-test של OpfsStore (שבדק vault-relative + getUri-על-קובץ בלבד). "ירוק ≠ נכון".
+**מטא-לקח**: אימות שכבת-נתונים בלי render אמיתי = GO מוקדם. visual/E2E render הוא חלק מ-DoD, לא nice-to-have.
+ה-preview שהמשתמשת ביקשה הוא שתפס את זה — לפני merge.
+
+### תוצאה סופית — אומת GO בדפדפן אמיתי
+local vault נפתח ל-workspace מלא של Obsidian על OPFS: file-explorer מקונן (Notes/sub/hello, Projects/plan),
+עורך עם note מקונן פתוח, 0 /api/fs, קבצים ב-vaults/<id>/... נכון. רגרסיה server תקינה.
+screenshots: /tmp/verify/opfs-vault-path/calev-*.png.
+
+### השרשרת למיזוג (לינארית, 4 slices)
+opfs-store → opfs-wire → opfs-geturi-fix → opfs-vault-path. כולן אומתו READY→GO.
+
 ## 2026-07-15 — OPFS milestone (opfs-store + opfs-wire): הושלם ואומת GO, מגבלות ידועות
 
 ### רציונל
