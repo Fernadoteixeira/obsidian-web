@@ -14,7 +14,12 @@ findings:
     severity: environment
     scope: verification-only
     category: env-limitation
-    summary: "vendor/obsidian-mobile חסר בסביבת האימות (/obsidian-mobile/* → 404), לכן render מלא של workspace/file-explorer UI לא נבדק דרך אפליקציית Obsidian האמיתית. כל מה שהסלייס שינה אומת בדפדפן אמיתי על OPFS אמיתי. לא defect של הסלייס."
+    summary: "vendor/obsidian-mobile חסר בסביבת האימות (/obsidian-mobile/* → 404), לכן render מלא של workspace/file-explorer UI לא נבדק דרך אפליקציית Obsidian האמיתית. כל מה שהסלייס שינה אומת בדפדפן אמיתי על OPFS אמיתי. לא defect של הסלייס. הבאת bundle: node scripts/update-obsidian-mobile.js."
+  - id: F3
+    severity: minor
+    scope: out-of-DoD
+    category: known-limitation
+    summary: "new-local.html מאפשר יצירת vault עם שם ריק → 'Untitled' (ללא ולידציה). עקבי עם §6 (עמוד מינימלי dev-facing). נדחה ל-opfs-ux."
 ---
 
 # calev-heavy — opfs-wire — verdict: GO

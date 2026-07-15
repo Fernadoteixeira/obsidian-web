@@ -57,7 +57,13 @@ binary round-trip → rename/delete/copy → reload persists → אפס רגרס
 
 ### נדחה במפורש ל-slices הבאים
 - **opfs-ux**: starter UI מלא (מיזוג לרשימת Obsidian), setup wizard, guard ל-desktop
-  `/?vault=<local-id>`, מחיקת OPFS ב-registry.remove, תיקון F1, docs.
+  `/?vault=<local-id>`, מחיקת OPFS ב-registry.remove, תיקון F1, **תיקון F3** (new-local.html
+  מאפשר שם ריק → "Untitled"; ולידציה), docs.
+
+### אימות ויזואלי חסר (לפני sign-off אנושי)
+כלב אימת הכל בדפדפן אמיתי על OPFS אמיתי, אך ה-render של ה-file-explorer דרך אפליקציית Obsidian
+לא נבדק כי `vendor/obsidian-mobile/` חסר בסביבה (app.js → 404, בשני הנתיבים). להבאת ה-bundle:
+`node scripts/update-obsidian-mobile.js`, ואז פתיחת local vault בדפדפן ואימות ויזואלי של תיקייה מקוננת.
 - **system-plugins ב-local vault** (layout switcher) + **LiveSync** — אחרי שה-OPFS מוכח ומאושר.
 
 ### פשרת עמידות (ממשיכה מהחלטת OPFS-first)
