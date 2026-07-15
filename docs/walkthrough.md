@@ -1754,3 +1754,62 @@ middleware פשוט שלוגר בקשות ל-`/api`, `/i18n`, `/lib` כדי שנ
 - TDD: test/bootstrap-invalidate.test.js נכתב ראשון (10 טסטים אדומים), אחר כך bootstrap-invalidate.js
 - `npm test`: 20/20 ירוקים (10 חדשים + 10 קיימים)
 - Testing strategy: tdd (לפי brief §4)
+
+---
+
+## 2026-07-15 — slice opfs-store, Commit 0
+
+### מודול `opfs-store.js` — OPFS-backed store עצמאי
+
+**Commit 0** של slice `opfs-store` (worktree `.worktrees/opfs-store`, branch `opfs-store`, base `main`):
+
+#### מה בוצע
+- **חדש: `src/client-mobile/storage/opfs-store.js`** — IIFE שחושף `window.__owOpfsStore = { makeStore }`. `makeStore(vaultId)` מחזיר store עם אותו פני-שטח מדויק כמו `Filesystem` plugin ב-`capacitor-shim.js`, מגובה **OPFS** תחת `/vaults/<vaultId>/`:
+  - `readFile`/`writeFile`/`appendFile`/`deleteFile` — utf8 + binary(base64), `arrayBufferToBase64`/`base64ToArrayBuffer` chunked (זהה ל-capacitor-shim:78-94)
+  - `appendFile` — byte-exact `ישן ⧺ חדש` (קורא bytes קיימים אם יש, משרשר, כותב הכל, `await w.close()`); יוצר קובץ+תיקיות-אב חסרים אם לא קיים
+  - `mkdir`/`rmdir`/`readdir`/`stat` — `resolveParent`/`resolveDir` עם `{create}` שמפעפע ליצירת שרשרת תיקיות-אב (mkdir-on-write)
+  - `rename`/`copy` — copy+delete (אין rename אטומי ב-OPFS); `rename` מוודא שהיעד קיים (`statKind`) **לפני** מחיקת המקור, כדי שכשל בעותק לא יאבד data
+  - `getUri` — `URL.createObjectURL(file)` (blob URL)
+  - `watchAndStatAll` — walk רקורסיבי, מחזיר **flat list** עם `name` = נתיב מלא יחסי ל-vault root, ללא `children` על entries (מגן על באג ה-nested-tree שהפיל production ב-2026-05-12)
+  - `startWatch`/`stopWatch`/`addListener` — no-ops (אין שינויים חיצוניים ל-OPFS)
+  - identity stubs: `setTimes`/`verifyIcloud`/`open`/`checkPerms`/`requestPermissions`/`requestPerms`/`choose`
+- 0 עריכות לקוד קיים — קובץ חדש בלבד.
+
+#### חריגה טכנית — סביבת ההרצה
+- הסביבה הזו לא כוללת Node.js אמיתי — `node` הוא ה-wrapper של Bun (`bun-node`), ו-`node --check`/`-c` לא עושה syntax-check בלבד אלא **מריץ** את הקובץ (נכשל עם `ReferenceError: window is not defined`, כצפוי למודול ברוב-דפדפן). וידאתי syntax תקין דרך `bun build src/client-mobile/storage/opfs-store.js --outdir=/tmp/... --target=browser` (bundled בהצלחה, 0 שגיאות פרסינג).
+- מאותה סיבה, `node --test` לא תומך בפורמט directory argument של הפרויקט — הרצתי baseline דרך `bun test src/client-mobile/test/` (**21/21 ירוקים**, זהה בכוונה ל-`node --test`).
+- `bun test` בשרת (`src/server`) מראה **1/21 נכשל** (`vaults-api.test.js` — hook timeout על beforeEach/afterEach) — **קיים מראש על `main`** (אימתתי בהרצה על הריפו הראשי, לא ה-worktree, לפני כל שינוי). לא קשור ל-slice הזה (הוא לא נוגע בשרת בכלל). לא תוקן — מחוץ ל-scope.
+
+#### בדיקות
+- Testing strategy: manual/syntax (לפי brief §4, Commit 0)
+- `bun build ... --target=browser`: 0 שגיאות
+- `bun test src/client-mobile/test/`: 21/21 ירוקים (baseline sanity — לא נגענו בקבצים האלה)
+- אימות runtime מלא (self-test בדפדפן) — ב-Commit 1
+
+---
+
+## 2026-07-15 — slice opfs-store, Commit 1
+
+### עמוד self-test בדפדפן
+
+**Commit 1** של slice `opfs-store`:
+
+#### מה בוצע
+- **חדש: `src/client-mobile/test/opfs-store.selftest.html`** — עמוד עצמאי שטוען אך ורק את `opfs-store.js`, מריץ 17 אסרשנים (12 קבוצות לפי §4 של הבריף) ומדפיס `PASS`/`FAIL` לכל אחד ל-`<pre id="out">`, עם שורת-סיכום `#summary`: `ALL PASS (N)` או `FAILED: k`.
+- מנקה `vaults/selftest-vault` בתחילת ההרצה (idempotent — ריצות חוזרות של העמוד מתחילות נקי).
+- מכסה: mkdir+write+read utf8, readdir, binary(base64) roundtrip כולל NUL, write עמוק עם auto-mkdir parents, stat (file+dir), rename=copy+delete (dest קיים + source נמחק), copy, deleteFile, **watchAndStatAll flat-list עם נתיבים מלאים ואין `children` על entries** (אסרשן 9 — הקריטי, מגן על באג production 2026-05-12), watch API no-ops, appendFile byte-exact (כולל יצירת קובץ+אבות חסרים), getUri blob: URL שנפתר לתוכן.
+- 0 עריכות לקוד קיים — קובץ חדש בלבד (מסתמך על `opfs-store.js` מ-Commit 0 בלבד).
+
+#### חריגה טכנית — אין דפדפן בסביבת ההרצה של אליעזר
+- בסביבה הזו (worktree, non-interactive) אין chrome/chromium/playwright זמינים (`which google-chrome chromium chromium-browser playwright` — כולם not found). **לא הרצתי בפועל את העמוד בדפדפן.**
+- מה שכן אימתתי:
+  - השרת רץ (`PORT=4001 node index.js`, כי 4000 תפוס ע"י תהליך אחר שלא נגעתי בו — לפי §0 "אל תהרוג BE רץ").
+  - `curl -s -o /dev/null -w '%{http_code}' http://localhost:4001/client-mobile/test/opfs-store.selftest.html` → **200**.
+  - `curl ... http://localhost:4001/client-mobile/storage/opfs-store.js` → **200** (ה-static mount של `/client-mobile/*` מכסה גם `test/` וגם `storage/` — אין 404, שאלה פתוחה #1 בבריף נענתה בפועל: כן).
+  - `bun test src/client-mobile/test/`: עדיין 21/21 ירוקים.
+- **אימות ה-runtime המלא (טעינת העמוד בדפדפן אמיתי + קריאת "ALL PASS") נותר למשימת calev בסוף ה-slice** — כפי שההוראה מהדיספאצ'ר קבעה מראש למקרה שאין גישת gui-host לאליעזר.
+
+#### בדיקות
+- Testing strategy: integration (לפי brief §4, Commit 1) — הקוד+הטסט נכתבו יחד באותו commit; ההרצה בפועל (ALL PASS) מאומתת ע"י calev בסוף ה-slice.
+- `bun test src/client-mobile/test/`: 21/21 ירוקים (baseline sanity)
+- HTTP 200 לעמוד ולמודול (curl)

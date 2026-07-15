@@ -2,7 +2,7 @@
 
 > **‏תאריך**: 2026-07-15
 > **‏סוג מסמך**: ‏בריף ביצועי לסלייס
-> **‏סטטוס**: ‏מאומת — ‏מוכן ל-dispatch
+> **‏סטטוס**: ‏הושלם (2026-07-15, ‏אליעזר) — ‏Commits: `5b6bb1f` (Commit 0), `250f6d9` (Commit 1). ‏ראה `docs/walkthrough.md` ‏ו-`reports/obsidian-web/opfs-store-calev.md`.
 > **‏אימות אביגיל**: **READY** (‏סבב 2; ‏דוח: `reports/obsidian-web/opfs-store-avigail.md`)
 > **Dispatch**: ‏מותר לאליעזר רק אם `אימות אביגיל = READY`.
 > **Complexity**: 6/10 (verifier: **light** — browser self-test)
@@ -400,4 +400,7 @@ node --test src/client-mobile/test/          # 21/21 ‏עדיין ‏ירוק (
 
 ## ‏סטיות מהתכנון (‏מתעדכן ע"י executor ‏תוך כדי)
 
-- ‏(‏ריק)
+- **‏אין דפדפן זמין לאליעזר בסביבה הזו** (chrome/chromium/playwright — לא נמצאו). ‏לפי ‏הוראת ‏הדיספאצ'ר: ‏ודאתי syntax (`bun build --target=browser`, ‏כי `node -c` ‏בסביבה הזו הוא ‏בעצם Bun's node-compat wrapper ‏שמריץ ‏את ‏הקובץ ‏במקום לבדוק syntax בלבד — ‏ראה walkthrough), ‏ודאתי ‏200 ‏ב-curl ‏לעמוד ‏ולמודול, ‏והרצתי ‏21/21 mobile unit-tests ‏ירוקים (baseline). **‏האימות ‏המלא ‏של "ALL PASS" ‏בדפדפן ‏אמיתי ‏נותר ‏ל-calev** (‏verifier ‏עשוי ‏להחזיק ‏גישת gui-host).
+- **‏`node --test` / `node -c` ‏לא זמינים אמת** — ‏הסביבה מספקת רק Bun (`node` הוא alias ל-bun-node wrapper). ‏שימוש שקול: `bun build --target=browser` ‏ל-syntax, `bun test` ‏ל-unit tests. ‏אין שינוי בכוונה/בהיקף — ‏רק כלי-הרצה שקול.
+- **1/21 טסטים בשרת (`vaults-api.test.js`) נכשל** — ‏קיים ‏מראש ‏על `main` (‏אומת ‏בהרצה ‏על ‏הריפו ‏הראשי ‏לפני ‏כל ‏שינוי, ‏לא ‏קשור ‏ל-worktree). ‏לא ‏קשור ‏ל-slice ‏הזה (‏לא ‏נוגע ‏בשרת), ‏לא ‏תוקן.
+- ‏port 4000 ‏היה ‏תפוס ‏ע"י ‏תהליך ‏אחר ‏(לא ‏קשור) — ‏השתמשתי ‏ב-4001 ‏לפי ‏הכלל "‏אל ‏תהרוג BE ‏רץ".
