@@ -1904,3 +1904,42 @@ middleware פשוט שלוגר בקשות ל-`/api`, `/i18n`, `/lib` כדי שנ
 - HTTP 200: `/client-mobile/shims/capacitor-shim.js`
 - `bun test src/client-mobile/test/`: 21/21 ירוקים
 - Proxy sanity script: `ALL PROXY SANITY CHECKS PASSED` (bind + destructuring + no-leak)
+
+---
+
+## 2026-07-15 — slice opfs-wire, Commit 3
+
+### index.html loading order + עמוד יצירה `new-local.html`
+
+**Commit 3** (אחרון) של slice `opfs-wire`:
+
+#### מה בוצע
+- **עריכה: `src/client-mobile/index.html`** — הוספו **לפני** `capacitor-shim.js`:
+  ```html
+  <script src="/client/local-vault-registry.js?v=1"></script>
+  <script src="/client-mobile/storage/opfs-store.js?v=1"></script>
+  ```
+  לא נדרש bump ידני ל-`?v=` — `sendHtmlWithCacheBust` (`src/server/index.js:65`, route `/mobile`) כותב-מחדש את כל תגי ה-`?v=` ב-`/client(-mobile)/*` אוטומטית לפי mtime. אימתתי: `curl http://localhost:4001/mobile` מציג `?v=ac12bbe50947` על שני התגים החדשים ועל capacitor-shim — busting עובד.
+- **חדש: `src/client-mobile/new-local.html`** — עמוד מינימלי עצמאי (dark theme בסיסי, בלי Obsidian assets): שדה שם + כפתור "Create local vault" (`__owLocalVaults.create(name)` → `location.href='/mobile?vault='+id`), ורשימת local vaults קיימים (`__owLocalVaults.list()`) עם קישור ל-`/mobile?vault=<id>` לכל אחד. טוען רק `/client/local-vault-registry.js` — אין תלות ב-boot.js/capacitor-shim/Obsidian bundle.
+- **walkthrough**: entry זה.
+- **עדכון סטטוס בבריף**: `docs/plans/opfs-wire.md` → "הושלם".
+
+#### DoD#9 — אין שינוי ל-opfs-store.js ולא לשרת
+`git diff --name-only opfs-store..HEAD` (אחרי Commit 3): `docs/plans/opfs-wire.md`, `docs/walkthrough.md`, `src/client-mobile/boot.js`, `src/client-mobile/index.html`, `src/client-mobile/new-local.html`, `src/client-mobile/shims/capacitor-shim.js`, `src/client/local-vault-registry.js` — בדיוק §2 בבריף, 0 נגיעה ב-`opfs-store.js` או `src/server/*`. ✅
+
+#### חריגה טכנית — E2E מלא נותר ל-calev-heavy
+עמוד היצירה + הזרימה המלאה (יצירת vault → כתיבת notes + תיקיות מקוננות → reload → רגרסיה על server vault) דורשים OPFS אמיתי בדפדפן — **אין OPFS ב-Node/bun**, ואין דפדפן זמין בסביבת הביצוע (`google-chrome`/`chromium`/`playwright` — not found). מה שכן אימתתי:
+- `bun build` על ה-JS המוטמע ב-`new-local.html` (חולץ לקובץ זמני) — 0 שגיאות פרסינג.
+- HTTP 200: `/mobile`, `/client-mobile/new-local.html`.
+- סדר טעינת ה-scripts ב-`/mobile` (curl, ראה למעלה) — registry + opfs-store **לפני** capacitor-shim, כנדרש.
+- `bun test src/client-mobile/test/`: 21/21 ירוקים (regression סופי).
+- **server vault לרגרסיה מוכן ומאומת מ-Commit 1**: id `2dcc8ee4cd76d045` (`user-data/demo-vault`), `/api/fs/stat` ו-`/api/fs/read` עובדים.
+- ה-DoD המלא (§5, פריטים 1-7) ו-Verification E2E (§4 Commit 3) → `calev-heavy` בסוף ה-slice, כפי שהבריף עצמו קבע (Complexity 7, tier heavy בגלל E2E מובייל + רגרסיה dual-path).
+
+#### בדיקות
+- Testing strategy: integration (brief §4, Commit 3) — syntax + HTTP 200 + loading-order verification + unit-regression בוצעו כאן; E2E מלא בדפדפן (יצירה/כתיבה/reload/רגרסיה) → calev-heavy.
+- `bun build` (inline script של new-local.html): 0 שגיאות
+- HTTP 200: `/mobile`, `/client-mobile/new-local.html`
+- Loading order מאומת ב-curl: registry + opfs-store לפני capacitor-shim
+- `bun test src/client-mobile/test/`: 21/21 ירוקים
+- `git diff --name-only opfs-store..HEAD`: תואם בדיוק ל-§2 בבריף (DoD#9)

@@ -2,7 +2,7 @@
 
 > **‏תאריך**: 2026-07-15
 > **‏סוג מסמך**: ‏בריף ביצועי לסלייס
-> **‏סטטוס**: ‏מאומת — ‏מוכן ל-dispatch
+> **‏סטטוס**: ‏הושלם (‏אליעזר, ‏4 commits — ‏ראה `docs/walkthrough.md` §"slice opfs-wire")
 > **‏אימות אביגיל**: **READY** (‏סבב 2; ‏דוח: `reports/obsidian-web/opfs-wire-avigail.md`)
 > **Dispatch**: ‏מותר לאליעזר רק אם `אימות אביגיל = READY`.
 > **Complexity**: 7/10 (verifier: **heavy** — E2E ‏מובייל + ‏רגרסיה ל-server vaults)
