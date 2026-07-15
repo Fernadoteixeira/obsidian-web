@@ -2,7 +2,7 @@
 
 > **‏תאריך**: 2026-07-15
 > **‏סוג מסמך**: ‏בריף ביצועי לסלייס (‏תיקון באג runtime ‏שנתפס ב-preview)
-> **‏סטטוס**: ‏מאומת — ‏מוכן ל-dispatch
+> **‏סטטוס**: **הושלם** (Commits 0-2 בוצעו; ‏DoD#1-4,6-9 ✅; **DoD#5 (workspace עולה) לא הושג בבדיקת-על של אליעזר — ראה walkthrough + חריגות למטה, מועבר ל-calev-heavy**)
 > **‏אימות אביגיל**: **READY** (‏דוח: `reports/obsidian-web/opfs-geturi-fix-avigail.md`)
 > **Dispatch**: ‏מותר לאליעזר רק אם `אימות אביגיל = READY`.
 > **Complexity**: 4/10 (verifier: **heavy** — ‏האימות האמיתי הוא render ‏מלא של Obsidian על OPFS)
@@ -207,4 +207,14 @@ assert(fileUri.uri.startsWith('blob:'), 'getUri(file) still blob: URL');
 ---
 
 ## ‏סטיות מהתכנון (‏executor)
-- ‏(‏ריק)
+- **DoD#5 לא הושג בבדיקת-על של אליעזר**: התיקון (Commit 0) עובד נכון — אומת ב-trace חי בדפדפן על כל קריאות
+  OpfsStore בזמן boot אמיתי (`checkPerms`, `getUri({path:'',directory:'EXTERNAL'})` ו-`getUri({directory:null,path:''})`
+  שני אלה **מצליחים ולא זורקים** יותר, `stat` עוטף DOMException ל-ENOENT כראוי, `readdir('')` מצליח). **אבל** ה-workspace
+  עדיין לא עולה: האפליקציה נשארת על מסך "Create a vault / Use my existing vault" (onboarding), ולחיצה על שני הכפתורים
+  (כולל `force:true` ב-playwright) לא מייצרת שום קריאת OpfsStore נוספת ולא משנה DOM — נראה כמו native bridge לא-ממומש
+  לזרימת ה-onboarding. תואם בדיוק את §7 escalation trigger #1 ("getUri הוא לא החסם היחיד"). מפורט ב-`docs/walkthrough.md`
+  (entry "slice opfs-geturi-fix"). מועבר ל-calev-heavy לאימות עצמאי + למרדכי להחלטה על brief המשך.
+- **vendor/obsidian חסר** — נוצר symlink `vendor/obsidian → obsidian-mobile` (בדיוק ה-workaround שהבריף §0 תיאר
+  כמגבלת-סביבה, לא באג slice).
+- **Node/npm לא זמינים בסביבת ביצוע זו** (רק `bun`) — שימוש ב-`bun install`/`bun test` במקום `npm install`/`node --test`;
+  `bun.lock` שנוצר לא הוכנס ל-git.
