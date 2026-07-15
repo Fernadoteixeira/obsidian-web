@@ -1870,3 +1870,37 @@ middleware פשוט שלוגר בקשות ל-`/api`, `/i18n`, `/lib` כדי שנ
 - HTTP 200: `/mobile`, `/client-mobile/boot.js`, `/client/local-vault-registry.js`
 - `bun test src/client-mobile/test/`: 21/21 ירוקים
 - server vault לרגרסיה מוכן: id `2dcc8ee4cd76d045` (demo-vault)
+
+---
+
+## 2026-07-15 — slice opfs-wire, Commit 2
+
+### Filesystem → Proxy dispatcher (OPFS ↔ HTTP) ב-capacitor-shim
+
+**Commit 2** של slice `opfs-wire`:
+
+#### מה בוצע
+- **עריכה: `src/client-mobile/shims/capacitor-shim.js`**:
+  1. שינוי שם: `const Filesystem = { ... }` (178-514 במקור) → `const HttpFilesystem = { ... }`.
+  2. **3 ההפניות הפנימיות שונו ל-`HttpFilesystem`** (כפי שהבריף דרש במפורש, "בדוק את כל 3 המופעים"): `trash` → `HttpFilesystem.deleteFile` (היה `Filesystem.deleteFile`, שורה ~382 במקור), `watchAndStatAll` → `HttpFilesystem.startWatch` (היה `Filesystem.startWatch`, ~448), `addListener` → `HttpFilesystem.startWatch` (היה `Filesystem.startWatch`, ~497). אחרת trash/watch של HTTP היו מנותבים דרך ה-Proxy, מה שעלול לפצל בין backends אם `__owVaultType` משתנה בין קריאות.
+  3. הוסף dispatcher אחרי `HttpFilesystem`: `fsBackend()` בוחר בין `window.__owOpfsStore.makeStore(vaultId)` (קאשור יחיד ב-`window.__owLocalFs`) ל-`HttpFilesystem` לפי `window.__owVaultType`. `const Filesystem = new Proxy({}, { get: ... })` — **`v.bind(b)` חובה** לכל property שהיא function (תיקון אביגיל: `OpfsStore.trash` עושה `return this.deleteFile(opts)`, כלומר נשען על `this`; בלי bind קריאה מפורקת הייתה שוברת את זה).
+  4. `const plugins = { Filesystem, ... }` (שורה ~656 במקור) נשאר ללא שינוי טקסטואלי — `Filesystem` הוא עכשיו ה-Proxy. `PluginHeaders` (~789-802) נשאר ללא שינוי — מונה את 23 המתודות; `OpfsStore` מממש את כולן (אומת ב-slice `opfs-store`).
+- 0 שינויים לקבצים אחרים.
+
+#### בדיקה אמיתית של ה-Proxy (מעבר ל-syntax-check) — אין דפדפן, אז הרצה scripted ב-bun
+זה ה-commit הכי מסוכן בסלייס (bind + 3 הפניות פנימיות) ולא הסתפקתי ב-`bun build`. כתבתי סקריפט חד-פעמי (`/tmp/shim-check.mjs`, **לא נשמר בריפו** — כלי אימות זמני, לא scope) שמדמה מינימלית `window`/`navigator`/`document`/`localStorage`/`fetch`/`WebSocket` ו-stub ל-`window.Capacitor = {fromNative(){}}`, `window.__owLocalVaults.has()=true`, ו-stub ל-`window.__owOpfsStore.makeStore` שסופר קריאות ל-`deleteFile` ומממש `trash` **בדיוק כמו ה-opfs-store.js האמיתי** (`return this.deleteFile(opts)` — נשען על `this`). ה-import של `capacitor-shim.js` מריץ את ה-IIFE האמיתי ללא שינוי (אותו קובץ בדיוק שיוגש בפרודקשן), כולל `patchCapacitor()` ב-module-init שממלא את `window.Capacitor.Plugins.Filesystem` עם ה-Proxy האמיתי. תוצאות (bun, לא דפדפן, אבל **הקוד האמיתי** רץ ללא mocking שלו עצמו):
+1. `Filesystem.trash({path:'note.md'})` עם `__owVaultType='local'` → מגיע ל-`OpfsStore.trash` → `this.deleteFile` נקרא (counter=1). **מוכיח ש-bind עובד**.
+2. `const {trash} = Filesystem; trash({path:'note2.md'})` (קריאה מפורקת, בלי `Filesystem.` prefix) → עדיין `this.deleteFile` נקרא (counter=2). **מוכיח שה-bind שורד גם destructuring** — התרחיש שהאזהרה בבריף (§4 Commit 2.3) מתארת במפורש.
+3. מעבר ל-`__owVaultType='server'` → `Filesystem.deleteFile(...)` מגיע ל-`HttpFilesystem` (fetch stub), **ולא** ל-OpfsStore (counter נשאר 2). **מוכיח שאין דליפה בין backends**.
+פלט: `ALL PROXY SANITY CHECKS PASSED`.
+- זה לא מחליף E2E דפדפן אמיתי (OPFS עצמו לא רץ כאן — ה-stub עוקף אותו), אבל מכסה בדיוק את שני הסיכונים הקריטיים שהבריף סימן (bind, פיצול backends) בקוד production האמיתי, לא בקוד מדומה.
+- `bun build src/client-mobile/shims/capacitor-shim.js --outdir /tmp/synccheck` — 0 שגיאות פרסינג.
+- HTTP 200: `curl http://localhost:4001/client-mobile/shims/capacitor-shim.js`.
+- `bun test src/client-mobile/test/`: 21/21 ירוקים (regression — קובץ זה לא נבדק ע"י ה-unit tests הקיימים, אבל שאר המודולים לא הושפעו).
+
+#### בדיקות
+- Testing strategy: integration (brief §4, Commit 2) — בוצע בפועל (לא רק syntax): הרצה scripted אמיתית של ה-IIFE המקורי ב-bun, מוכיחה bind + הפרדת backends. E2E דפדפן מלא (OPFS אמיתי, לא stub) → calev-heavy.
+- `bun build`: 0 שגיאות
+- HTTP 200: `/client-mobile/shims/capacitor-shim.js`
+- `bun test src/client-mobile/test/`: 21/21 ירוקים
+- Proxy sanity script: `ALL PROXY SANITY CHECKS PASSED` (bind + destructuring + no-leak)
