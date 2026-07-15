@@ -2,6 +2,37 @@
 
 > ‏רציונל ‏ארכיטקטוני ‏פר-slice (‏מרדכי). ‏ליד הקוד, ‏לא ‏בריפו ‏השיטה.
 
+## 2026-07-15 — OPFS-first: לנתק local-vaults מ-LiveSync, להוכיח OPFS עצמאית קודם (החלטת המשתמשת)
+
+### רציונל
+`local-vaults-implementation.md` סידר את LiveSync **ראשון** בכוונה — טיעון בטיחות-נתונים
+("local vault בלי LiveSync = vault שאי-אפשר לברוח ממנו"). המשתמשת בחרה **להפוך** את הסדר:
+להוכיח ש-OPFS מתפקד במלואו על המובייל, עם **שרת סטטי בלבד**, **לפני** חיבור LiveSync.
+המניע: de-risking — לראות את מנוע האחסון עובד end-to-end לפני שמוסיפים את שכבת הסנכרון.
+
+זה **re-scope, לא rewrite**: ליבת ה-OPFS בתכנון (Phases 1-3: OpfsStore, ניתוב, יצירת vault)
+כבר מנותקת טכנית מ-LiveSync. LiveSync מופיע שם רק כ-(א) שער-כניסה ו-(ב) קריטריון-קבלה אחרון.
+מסירים את השער; ה-DoD העצמאי = create local vault → write/read notes → תיקיות מקוננות →
+binary round-trip → rename/delete/copy → reload persists → אפס רגרסיה ל-server vaults.
+
+### שינויי-כיוון
+- **מסירים תלות LiveSync** מ-local-vaults למילסטון הראשון. LiveSync יתחבר רק אחרי ש-OPFS ירוק.
+- **נופלת מורכבות pitfall 6** (endpoint `vault=__system__` להגשת system-plugins לתוך OPFS):
+  למילסטון הזה local vault רץ בלי system plugins (או שהם static). פחות קוד, פחות סיכון.
+- **חלוקה ל-2 slices (JIT)**: `opfs-store` (מודול OPFS עצמאי, self-test בדפדפן) →
+  `opfs-wire` (registry + ניתוב vault-type + dispatcher + יצירת vault מינימלית — "רואים את זה עובד").
+  Phase 3 מלא (starter UI) + Phase 4 (wizard) + Phase 5 (docs) = slice שלישי אחר-כך.
+
+### פשרה מקובלת (אישור מפורש של המשתמשת)
+**עמידות**: local vault בלי LiveSync ובלי export = "Clear browsing data" אחד מאובדן מוחלט.
+המשתמשת מקבלת זאת למילסטון-ההדגמה. גיבוי (LiveSync/export) יתווסף אחרי ש-OPFS יוכח.
+
+### רעיונות שנדחו
+- **slice אנכי אחד (OpfsStore+wiring יחד)** — נדחה: OpfsStore לבד ניתן לאימות עצמאי
+  (self-test בדפדפן) בלי סיכוני האינטגרציה; חלוקה נותנת gate ביניים נקי.
+- **פיבוט client-only מלא (בלי שרת)** — כבר נדחה ב-`future-direction-client-only.md`;
+  per-vault הוא strictly more general. השרת הסטטי נשאר (bundle + assets).
+
 ## 2026-06-13 — PR #9 shims: opt-in דרך env var, לא ברירת-מחדל (החלטת המשתמשת)
 
 > החלטה צופה-קדימה. נאכפת בסלייס **client-wiring** העתידי (שם יש לה שיניים), לא ב-server-shims הנוכחי. נכתבה כאן כדי לכוון את ה-brief של client-wiring כשייכתב.
