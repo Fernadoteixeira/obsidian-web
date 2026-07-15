@@ -1813,3 +1813,31 @@ middleware פשוט שלוגר בקשות ל-`/api`, `/i18n`, `/lib` כדי שנ
 - Testing strategy: integration (לפי brief §4, Commit 1) — הקוד+הטסט נכתבו יחד באותו commit; ההרצה בפועל (ALL PASS) מאומתת ע"י calev בסוף ה-slice.
 - `bun test src/client-mobile/test/`: 21/21 ירוקים (baseline sanity)
 - HTTP 200 לעמוד ולמודול (curl)
+
+---
+
+## 2026-07-15 — slice opfs-wire, Commit 0
+
+### `local-vault-registry.js` — registry מקומי ב-localStorage
+
+**Commit 0** של slice `opfs-wire` (worktree `.worktrees/opfs-wire`, branch `opfs-wire`, base `opfs-store` — שרשור, tip `fcfca48`):
+
+#### מה בוצע
+- **חדש: `src/client/local-vault-registry.js`** — IIFE שחושף `window.__owLocalVaults` (מבוסס Phase 2a של `local-vaults-implementation.md`), מגובה `localStorage['obsidian-web:local-vaults']` (JSON map `{ [id]: {name, createdAt} }`):
+  - `list()` — מערך `{id, name, createdAt}` ממויין `createdAt` יורד
+  - `get(id)` — `{name, createdAt}` או `null`
+  - `has(id)` — boolean
+  - `create(name)` — יוצר id 16-hex (`crypto.getRandomValues`), שומר, מחזיר `{id, name}`
+  - `rename(id, name)` — boolean
+  - `remove(id)` — boolean; מנקה רק את ה-registry — מחיקת תוכן OPFS באחריות הקורא (§9 שאלה 2 בבריף)
+- ממוקם ב-`client/` (לא `client-mobile/`) כי גם עמוד ה-starter (desktop runtime) וגם ה-mobile runtime צריכים אותו — שני `<script>` tags נפרדים בהמשך ה-slice.
+- 0 עריכות לקוד קיים — קובץ חדש בלבד.
+
+#### חריגה טכנית — סביבת ההרצה (זהה ל-opfs-store)
+- `node -c`/`--check` על הריצה הזו (bun-node shim) לא עושה syntax-check טהור אלא **מריץ** את הקובץ ונכשל עם `ReferenceError: window is not defined` — התנהגות ידועה, גם על קובץ תקין לחלוטין (אימתתי על `opfs-store.js` הקיים, מאומת GO, ונכשל באותו אופן). אימתתי syntax תקין דרך `bun build src/client/local-vault-registry.js --outdir /tmp/synccheck` (bundled בהצלחה, 0 שגיאות).
+- אין דפדפן זמין בסביבה הזו (`which google-chrome chromium chromium-browser playwright` — הכל not found) — אימות פונקציונלי מלא (create/list/has/remove בפועל) נדחה ל-Commit 3 / calev-heavy בסוף ה-slice, כפי שהבריף עצמו קובע ("אימות פונקציונלי ב-Commit 3").
+
+#### בדיקות
+- Testing strategy: manual/syntax (brief §4, Commit 0)
+- `bun build src/client/local-vault-registry.js --outdir /tmp/synccheck`: 0 שגיאות
+- `bun test src/client-mobile/test/`: 21/21 ירוקים (baseline sanity — לא נגענו בקבצים האלה)
