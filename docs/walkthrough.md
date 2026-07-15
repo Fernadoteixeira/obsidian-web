@@ -4,6 +4,63 @@
 
 ---
 
+## 2026-07-15 — slice opfs-vault-path (thread על opfs-geturi-fix, Commits 0-1)
+
+### `capacitor-shim.js`: OPFS backend מנרמל path דרך `fullPath` לפני האצלה ל-`OpfsStore` — **local vault נכנס ל-workspace**
+
+**Base**: branch `opfs-geturi-fix` (tip `78b8354`, לא merged — שרשור) | **Commits**: 2 (0, 1)
+
+#### מה בוצע — Commit 0 (integration)
+
+התיקון שאמור סוף-סוף לפתור את הבאג המקורי מה-thread כולו (onboarding לא נעלם ב-local vault): Obsidian mobile משתמש ב-vaultId **כ-base-path** ומקדים אותו לכל קריאת FS. ב-vault-open הוא קורא `stat({directory:'EXTERNAL', path: vaultId})` — הקריאה היחידה שמכריעה open-vs-onboarding. `HttpFilesystem` כבר מריץ כל opts דרך `fullPath()` (שמסיר את קידומת ה-vaultId) לפני קריאה לשרת — אבל ה-OPFS backend (`OpfsStore.makeStore(...)`) קיבל את ה-opts **ללא** נרמול, ופירש `path: vaultId` כ-`vaults/<id>/<id>` שלא קיים → ENOENT → `window.app` לא נוצר → onboarding.
+
+**המיקום — dispatcher, לא `OpfsStore`** (החלטת מרדכי, מתועדת בבריף §0): vaultId-as-basepath ו-`directory` enum הם דאגות של שכבת ה-Capacitor-adapter, לא של `OpfsStore` (שחוזהו המפורש: "keys are vault-relative"). שימוש חוזר ב-`fullPath()` הקיים = single-source-of-truth עם `HttpFilesystem`, בלי שכפול לוגיקה.
+
+- **`src/client-mobile/shims/capacitor-shim.js`** — נוספה `wrapOpfsWithFullPath(store)`: עוטפת את ה-store שמוחזר מ-`window.__owOpfsStore.makeStore(...)` ב-`Object.create(store)`, ומחליפה מתודות שמקבלות `opts.path` (`OPFS_PATH_METHODS` = readFile/writeFile/appendFile/deleteFile/mkdir/rmdir/readdir/stat/getUri) בגרסה שמנרמלת את ה-path דרך `fullPath()` לפני האצלה למקור. `rename`/`copy` מנורמלים בנפרד לכל צד (`from`/`to`, עם `toDirectory||directory`) — בדיוק כמו `HttpFilesystem.rename/copy` (שורות 348-350, 367-369).
+- **`trash` נשאר מחוץ ל-`OPFS_PATH_METHODS`** — הוא passthrough דרך ה-prototype chain (`Object.create`) שקורא `this.deleteFile(opts)`; מכיוון ש-`this` בזמן הקריאה הוא ה-wrapped object, זה קורא ל-`deleteFile` **המנורמל** — נרמול פעם אחת, לא כפול.
+- `watchAndStatAll`/`startWatch`/`stopWatch`/`addListener`/`setTimes` — passthrough (לא מקבלים `opts.path`).
+- **אין שינוי ל-`opfs-store.js`** — נשאר GO ללא נגיעה, כפי שהבריף קבע (§2).
+
+**אימות (integration, בפועל — לא רק syntax)**:
+- syntax תקין: `vm.Script` על הקובץ (bun's `node --check`/`node -c` לא עובד נכון בסביבה זו — מריץ את ה-IIFE בפועל ונכשל על `window is not defined` ברמת top-level; זה קיים גם ב-baseline, לא syntax error אמיתי — תועד כבר ב-thread הקודם).
+- `bun test src/client-mobile/test/`: **21/21 ירוקים** (ללא רגרסיה).
+- **E2E אמיתי בדפדפן (playwright chromium, לא simulation/monkeypatch — התיקון האמיתי ב-capacitor-shim.js)**, מול שרת אמיתי (`PORT=4030 node index.js`):
+  - יצירת local vault חדש (`new-local.html` → `__owLocalVaults.create`) → `.workspace` מופיע, `window.app`/`window.app.workspace` קיימים, אין `.mobile-onboarding`, אין spinner, **0 קריאות ל-`/api/fs`** — **DoD#1 + DoD#4 ✅**.
+  - כתיבת `Notes/sub/hello.md` דרך `window.app.vault.adapter` → OPFS walk ישיר (`navigator.storage.getDirectory()`) מראה `vaults/<id>/Notes/sub/hello.md` — **לא** `vaults/<id>/<id>/...` (double-nested) — **DoD#3 ✅**.
+  - file explorer (`app.workspace.leftSplit.expand()`) מציג "2 files, 2 folders" אחרי כתיבת קבצים מקוננים; פתיחת הקובץ ב-editor (`app.workspace.getLeaf(true).openFile(...)`) מציגה את התוכן הנכון — **DoD#2 ✅**. צילומים: `/tmp/verify/opfs-vault-path/{local-vault-real-fix,file-explorer,editor,file-explorer-nested}.png`.
+  - רגרסיית server vault (`POST /api/vaults/open` על `user-data/demo-vault`, ואז `/mobile?vault=<id>`) — workspace עולה, `/api/fs` נקרא (42 בקשות) — **DoD#5 ✅**, `HttpFilesystem` לא נגע.
+  - `opfs-store.selftest.html` — **ALL PASS (23)**, ללא שינוי — **DoD#6 ✅**.
+
+#### מה בוצע — Commit 1 (none)
+
+walkthrough entry זה + עדכון סטטוס בבריף ל-"הושלם".
+
+#### תובנת קטגוריה-1 (חשוב ל-thread כולו)
+
+הבאג הזה (ולפניו, getUri ב-`opfs-geturi-fix`) נבע מאותו חור-כיסוי בדיוק: **הנתיב ה-vaultId-prefixed (`stat({path: vaultId})`) מעולם לא נבדק** — לא ב-unit tests, לא ב-self-test של `OpfsStore` (23 assertions, כולן על paths vault-relative נקיים), ולא ב-fix-simulation הראשונה של `getUri`. זו בדיוק הקריאה היחידה שמכריעה open-vs-onboarding, וגם זו שקובעת את מיקום כל כתיבה עתידית (double-nesting). "ירוק ≠ נכון": self-test ירוק + unit tests ירוקים לא תפסו את זה כי אף אחד מהם לא דימה את התנהגות ה-adapter האמיתית (vaultId כ-base-path). התיקון בפועל אומת רק דרך E2E מלא בדפדפן אמיתי — בדיוק כפי שהבריף קבע מראש (§4 הערה: "קשה ל-unit-test... האימות הקריטי הוא calev-heavy E2E").
+
+#### DoD verifiable (§5 בבריף) — מצב אחרי Commits 0-1
+
+| # | סטטוס | הערה |
+|---|------|------|
+| 1 | ✅ | workspace מלא, `window.app` קיים, אין onboarding — ראה למעלה |
+| 2 | ✅ | file explorer עם קבצים/תיקיות מקוננים |
+| 3 | ✅ | `vaults/<id>/Notes/sub/hello.md` — לא double-nested |
+| 4 | ✅ | 0 קריאות `/api/fs` ל-local vault |
+| 5 | ✅ | server vault רגרסיה — workspace עולה, `/api/fs` פעיל |
+| 6 | ✅ | `opfs-store.selftest.html` — ALL PASS (23) |
+| 7 | ✅ | `bun test src/client-mobile/test/` — 21/21 |
+| 8 | ✅ | `git diff --name-only opfs-geturi-fix..HEAD` — רק `capacitor-shim.js` + `docs/walkthrough.md` + `docs/plans/opfs-vault-path.md` (סטטוס) |
+
+#### בדיקות
+
+- Testing strategy: Commit 0=integration, Commit 1=none — לפי הבריף, ללא סטייה.
+- Commit 0: syntax (`vm.Script`), `bun test` (21/21), E2E playwright אמיתי (לא simulation) — ראה פירוט למעלה.
+- Commit 1: אין (none).
+- אימות E2E מלא ורגרסיה נוספת → `calev-heavy` בסוף ה-slice (כפי שהבריף קבע, complexity 5→heavy tier).
+
+---
+
 ## 2026-06-13 — server-bootstrap-perf: סבב Fix רביעי (מוטציות תיקיות — F1+F2)
 
 **Branch**: `server-bootstrap-perf` | **Commits**: e3410c2..HEAD (סבב fix רביעי)

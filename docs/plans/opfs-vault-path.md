@@ -2,7 +2,7 @@
 
 > **‏תאריך**: 2026-07-15
 > **‏סוג מסמך**: ‏בריף ביצועי (‏תיקון שורש שיטתי — ‏parity ‏של חוזה-נתיבים בשכבת ה-dispatcher)
-> **‏סטטוס**: ‏מאומת — ‏מוכן ל-dispatch
+> **‏סטטוס**: **‏הושלם** (Commits 0-1, ‏branch `opfs-vault-path`) — ‏ראו `docs/walkthrough.md` ‏entry `2026-07-15 — slice opfs-vault-path`
 > **‏אימות אביגיל**: **READY** (‏דוח: `reports/obsidian-web/opfs-vault-path-avigail.md`)
 > **Dispatch**: ‏מותר לאליעזר רק אם `אימות אביגיל = READY`.
 > **Complexity**: 5/10 (verifier: **heavy** — ‏render ‏מלא של Obsidian על OPFS)
