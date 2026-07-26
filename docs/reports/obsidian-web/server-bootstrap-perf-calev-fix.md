@@ -57,14 +57,14 @@ findings:
 
 ## TL;DR
 
-| מדד | תוצאה |
-|------|--------|
-| DoD items עוברים | 5/8 fully, 1 partial (#5 stale-for-consumer), 1 unverifiable (#3 cold-perf), #7 verified identical |
-| NBug1 (rename content/stat) | ✅ FIXED — אומת על vault אמיתי |
-| NBug2 (dir-mtime parent listing) | ✅ FIXED — אומת byte-for-byte מול full |
-| Regressions | 0 |
-| Bugs חדשים | 2 (1 blocker: br-stale-window, 1 minor: copy NBug1-parallel) |
-| Tests ש-אליעזר הכריז | אומת — 27/27 server pass על HEAD הסופי |
+| מדד                              | תוצאה                                                                                              |
+| -------------------------------- | -------------------------------------------------------------------------------------------------- |
+| DoD items עוברים                 | 5/8 fully, 1 partial (#5 stale-for-consumer), 1 unverifiable (#3 cold-perf), #7 verified identical |
+| NBug1 (rename content/stat)      | ✅ FIXED — אומת על vault אמיתי                                                                     |
+| NBug2 (dir-mtime parent listing) | ✅ FIXED — אומת byte-for-byte מול full                                                             |
+| Regressions                      | 0                                                                                                  |
+| Bugs חדשים                       | 2 (1 blocker: br-stale-window, 1 minor: copy NBug1-parallel)                                       |
+| Tests ש-אליעזר הכריז             | אומת — 27/27 server pass על HEAD הסופי                                                             |
 
 הסבב fix תיקן את שני ה-NBugs מהסבב הקודם — אומת בריצה אמיתית. אבל ההתמקדות ב-`Accept-Encoding: identity` בטסטים חשפה (ובמקביל הסתירה) באג חמור יותר: **הצרכן האמיתי (desktop+mobile שולחים br/gzip) מקבל payload ישן עד 250ms אחרי כל כתיבה**, כי ה-buffer הדחוס debounced בעוד שרק נתיב ה-identity מגיש את `entry.response` החי. בנוסף, route ה-`/copy` סובל מאותו פגם שתוקן ל-rename (NBug1) אבל לא טופל.
 
@@ -74,19 +74,19 @@ findings:
 
 ## טבלת DoD items
 
-| # | Item מה-brief | סטטוס | עדות |
-|---|---------------|--------|------|
-| 1 | כל server tests ירוקים | ✅ | `npm test` → 27/27 pass על 79ad3e3 |
-| 2 | mobile unit tests לא נשברו | ✅ | חיים ב-main; ה-worktree נוצר מ-HEAD נקי לפני ה-WIP (כמתועד ב-brief §0) |
-| 3 | Cold bootstrap מהיר יותר | ⓘ לא ניתן לאימות | אין root → אי-אפשר drop_caches; VFS חם. config.threadPoolSize default=64, נקבע ב-index.js:16-17 לפני requires. cold (חם-VFS) full=1043-1570ms ל-599-603 files. טענת 37s→2s על VFS קר לא שוחזרה |
-| 4 | שמירה לא מוחקת cache | ✅ | אחרי PUT write → bootstrap הבא `cache HIT (3-5ms)`, לא MISS |
-| 5 | עדכון מדויק | ⚠️ | identity path: FRESH תמיד. **br path (הצרכן האמיתי): STALE 4/4** בתוך חלון ה-debounce (ראה NBug-A) |
-| 6 | מחיקה מדויקת — שני הנתיבים | ✅ | (א) unlink → נעלם מ-fs+dirs[tmp]. (ב) electron/trash (200) → נעלם מ-fs+dirs[tmp]. HIT נשמר בשניהם |
-| 7 | Incremental מול full | ✅ | שינוי חיצוני → `cache MISS (1 dirs changed): tmp` → `incremental rebuild (1 dirs)`. diff מול full rescan טרי (שרת נפרד): **0 fs mismatches, 0 dir-entry mismatches** |
-| 8 | HIT נקי נשאר מהיר | ✅ | rclone vault: `cache HIT (3-5ms)`, ~120ms round-trip ל-7.3MB identity |
-| 9 | README מתעד UV_THREADPOOL_SIZE | ✅ | README.md:137 — `UV_THREADPOOL_SIZE: ... default 64` |
-| 10 | walkthrough entry מתוארך | ❌ | docs/walkthrough.md לא קיים בעץ-העבודה |
-| 11 | אין commits | ❌ | אליעזר עשה 5 commits (Phase1-3 + 2 fix rounds). חריגה מוכרת; מרדכי ימזג |
+| #   | Item מה-brief                  | סטטוס            | עדות                                                                                                                                                                                           |
+| --- | ------------------------------ | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | כל server tests ירוקים         | ✅               | `npm test` → 27/27 pass על 79ad3e3                                                                                                                                                             |
+| 2   | mobile unit tests לא נשברו     | ✅               | חיים ב-main; ה-worktree נוצר מ-HEAD נקי לפני ה-WIP (כמתועד ב-brief §0)                                                                                                                         |
+| 3   | Cold bootstrap מהיר יותר       | ⓘ לא ניתן לאימות | אין root → אי-אפשר drop_caches; VFS חם. config.threadPoolSize default=64, נקבע ב-index.js:16-17 לפני requires. cold (חם-VFS) full=1043-1570ms ל-599-603 files. טענת 37s→2s על VFS קר לא שוחזרה |
+| 4   | שמירה לא מוחקת cache           | ✅               | אחרי PUT write → bootstrap הבא `cache HIT (3-5ms)`, לא MISS                                                                                                                                    |
+| 5   | עדכון מדויק                    | ⚠️               | identity path: FRESH תמיד. **br path (הצרכן האמיתי): STALE 4/4** בתוך חלון ה-debounce (ראה NBug-A)                                                                                             |
+| 6   | מחיקה מדויקת — שני הנתיבים     | ✅               | (א) unlink → נעלם מ-fs+dirs[tmp]. (ב) electron/trash (200) → נעלם מ-fs+dirs[tmp]. HIT נשמר בשניהם                                                                                              |
+| 7   | Incremental מול full           | ✅               | שינוי חיצוני → `cache MISS (1 dirs changed): tmp` → `incremental rebuild (1 dirs)`. diff מול full rescan טרי (שרת נפרד): **0 fs mismatches, 0 dir-entry mismatches**                           |
+| 8   | HIT נקי נשאר מהיר              | ✅               | rclone vault: `cache HIT (3-5ms)`, ~120ms round-trip ל-7.3MB identity                                                                                                                          |
+| 9   | README מתעד UV_THREADPOOL_SIZE | ✅               | README.md:137 — `UV_THREADPOOL_SIZE: ... default 64`                                                                                                                                           |
+| 10  | walkthrough entry מתוארך       | ❌               | docs/walkthrough.md לא קיים בעץ-העבודה                                                                                                                                                         |
+| 11  | אין commits                    | ❌               | אליעזר עשה 5 commits (Phase1-3 + 2 fix rounds). חריגה מוכרת; מרדכי ימזג                                                                                                                        |
 
 ## NBug1 + NBug2 — אימות תיקון (הסבב הקודם)
 
@@ -118,11 +118,14 @@ findings:
 ### ❌ NBug-A — הצרכן האמיתי (br/gzip) מקבל payload ישן עד 250ms אחרי כתיבה (blocker)
 
 - **מניפסטציה:** רצף `write(val) → bootstrap(Accept-Encoding: br)` מיידי. ה-content שחוזר הוא של כתיבה **קודמת**, לא של ה-val הנוכחי. 4/4 ניסיונות STALE. דוגמה:
+
   ```
   #2 exp=CMP-2  | identity=CMP-2 FRESH | br(consumer)=CMP-0 STALE   ← שתי כתיבות אחורה
   #3 exp=FINAL-3| identity=FRESH        | br(consumer)=FINAL-1 STALE
   ```
+
   ה-identity path תמיד FRESH; ה-br path תמיד STALE בתוך חלון ה-debounce. אחרי ~250-400ms ה-br מתעדכן (self-heals).
+
 - **גורם:** `scheduleRecompress` (bootstrap.js:594-611) דוחה את עדכון `entry.compressed.br/.gz` ב-250ms. נתיב ההגשה (bootstrap.js:766-784) מחזיר את `compressed.br` כש-`Accept-Encoding: br` (בדיוק מה ש-undici/הדפדפן שולח), ורק `res.json(entry.response)` (החי, המעודכן) כש-`identity`. הצרכן (desktop+mobile shim) שולח br/gzip → מקבל buffer דחוס ישן.
 - **למה זה לא נתפס:** הטסטים החדשים (`getBootstrap`) הוסיפו `Accept-Encoding: identity` **בדיוק כדי לעקוף** את ה-buffer ולקרוא את ה-`entry.response` החי. זה גורם לטסטים לעבור (27/27) אבל **לא בודק את הנתיב שהמשתמש בפועל חווה**. קטגוריה 1 קלאסית (TDD ירוק ≠ התנהגות נכונה) — הטסט שינה את הקלט כדי להאיר את ה-state הנכון, ובכך עיוור את עצמו לבאג שהוא אמור לשמור עליו.
 - **חומרה:** blocker מבחינת "הצרכן מקבל בדיוק אותו JSON, רק מהר ועקבי" (§2). אחרי כל save ב-Obsidian, bootstrap בתוך 250ms (reload מהיר, ניווט, reconnect) מחזיר את התוכן הקודם. זה בדיוק ה"לפעמים תקוע/stale" שה-slice בא לחסל, רק בחלון צר יותר. נדיר ב-flow אנושי איטי, ודאי ב-reload-after-save או automated.
@@ -140,17 +143,18 @@ findings:
 
 ## סיווג ל-patterns.md
 
-| באג | קטגוריה | הערה |
-|------|----------|------|
-| NBug-A (br stale window) | **קטגוריה 1 (TDD ירוק ≠ התנהגות נכונה)** + library-compat | הטסט הוסיף `Accept-Encoding: identity` כדי "לתקן" את עצמו ובכך עקף את הנתיב (compressed buffer) שהמשתמש בפועל חווה. ה-contract הפנימי (entry.response) נכון; מה שהמשתמש מקבל (compressed.br) ישן. בדיוק B1/B15 — הטסט בידד את ה-unit מהשימוש האמיתי בו |
-| NBug-B (copy ללא content) | **קטגוריה 3 (Spec Drift)** + קטגוריה 1 | תיקון נקודתי ל-rename, פספוס של ה-call-site המקביל (copy). ה-brief השמיט content לשני הנתיבים; rename תוקן, copy לא. unit-tests של updateEntryFile ירוקים על ה-contract, אף טסט לא מפעיל copy דרך ה-flow ומשווה ל-full |
-| commit hygiene (#3) | unique | תהליך, לא קוד |
+| באג                       | קטגוריה                                                   | הערה                                                                                                                                                                                                                                                   |
+| ------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| NBug-A (br stale window)  | **קטגוריה 1 (TDD ירוק ≠ התנהגות נכונה)** + library-compat | הטסט הוסיף `Accept-Encoding: identity` כדי "לתקן" את עצמו ובכך עקף את הנתיב (compressed buffer) שהמשתמש בפועל חווה. ה-contract הפנימי (entry.response) נכון; מה שהמשתמש מקבל (compressed.br) ישן. בדיוק B1/B15 — הטסט בידד את ה-unit מהשימוש האמיתי בו |
+| NBug-B (copy ללא content) | **קטגוריה 3 (Spec Drift)** + קטגוריה 1                    | תיקון נקודתי ל-rename, פספוס של ה-call-site המקביל (copy). ה-brief השמיט content לשני הנתיבים; rename תוקן, copy לא. unit-tests של updateEntryFile ירוקים על ה-contract, אף טסט לא מפעיל copy דרך ה-flow ומשווה ל-full                                 |
+| commit hygiene (#3)       | unique                                                    | תהליך, לא קוד                                                                                                                                                                                                                                          |
 
 ## סיכום לסוכן הבא (אליעזר של ה-fix ב')
 
 הסבב fix הקודם **הצליח** — NBug1+NBug2 תוקנו ואומתו על vault אמיתי, ה-incremental payload זהה byte-for-byte ל-full. אבל נחשפו שני פערים:
 
 עדיפות לתיקון:
+
 1. **NBug-A (br stale window)** — הכי משמעותי. הצרכן האמיתי (br/gzip) מקבל payload ישן עד 250ms אחרי כל write. הטסטים מסתירים את זה ע"י identity. צריך: או recompress סינכרוני על שינוי response, או fallback ל-`res.json(entry.response)` כשה-buffer מיושן, **וגם** טסט שבודק את נתיב ה-br/gzip (לא identity) — אחרת הבאג יחזור שקט.
 2. **NBug-B (copy content)** — להחיל את אותו fix של rename (stat+readFile של dest אחרי copyFile) על route ה-`/copy` ב-fs.js:533-543. תיקון של ~20 דק', זהה ל-NBug1.
 3. **DoD #10** — להוסיף walkthrough entry (docs/walkthrough.md לא קיים).
