@@ -29,16 +29,16 @@ which forces the mobile UI.
 
 These were built in the conversation that produced this plan:
 
-| File | Status |
-|---|---|
-| `scripts/update-obsidian-mobile.js` | Downloads APK and extracts `obsidian-mobile/`. Works. |
-| `obsidian-mobile/` | Extracted mobile bundle (app.js, native-bridge.js, lib/, etc.) |
-| `client-mobile/index.html` | Loads capacitor-shim → native-bridge → boot.js |
-| `client-mobile/boot.js` | Vault selection, `window.require` for plugins, **post-init UI cleanup via MutationObserver** (the cleanup is what we are replacing in this plan) |
-| `client-mobile/shims/capacitor-shim.js` | Implements Filesystem/App/Device/etc. plugins over HTTP. Includes `PluginHeaders` array so `registerPlugin` resolves methods correctly. |
-| `server/index.js` route `/mobile` | Serves `client-mobile/index.html` |
-| `server/index.js` route `/obsidian-mobile/*` | Serves extracted bundle |
-| `server/index.js` route `/client-mobile/*` | Serves client files |
+| File                                         | Status                                                                                                                                           |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `scripts/update-obsidian-mobile.js`          | Downloads APK and extracts `obsidian-mobile/`. Works.                                                                                            |
+| `obsidian-mobile/`                           | Extracted mobile bundle (app.js, native-bridge.js, lib/, etc.)                                                                                   |
+| `client-mobile/index.html`                   | Loads capacitor-shim → native-bridge → boot.js                                                                                                   |
+| `client-mobile/boot.js`                      | Vault selection, `window.require` for plugins, **post-init UI cleanup via MutationObserver** (the cleanup is what we are replacing in this plan) |
+| `client-mobile/shims/capacitor-shim.js`      | Implements Filesystem/App/Device/etc. plugins over HTTP. Includes `PluginHeaders` array so `registerPlugin` resolves methods correctly.          |
+| `server/index.js` route `/mobile`            | Serves `client-mobile/index.html`                                                                                                                |
+| `server/index.js` route `/obsidian-mobile/*` | Serves extracted bundle                                                                                                                          |
+| `server/index.js` route `/client-mobile/*`   | Serves client files                                                                                                                              |
 
 **Verified working in the previous conversation:**
 
@@ -83,14 +83,16 @@ read/write it.
 
 ```js
 const PATCH_1 = {
-  name: 'expose-platform',
-  find:    /var (\w{1,3})=\{isDesktop:!1,isMobile:!1,isDesktopApp:!1/,
-  replace: 'var $1=window.__owPlatform={isDesktop:!1,isMobile:!1,isDesktopApp:!1',
+  name: "expose-platform",
+  find: /var (\w{1,3})=\{isDesktop:!1,isMobile:!1,isDesktopApp:!1/,
+  replace:
+    "var $1=window.__owPlatform={isDesktop:!1,isMobile:!1,isDesktopApp:!1",
   expectedMatches: 1,
 };
 ```
 
 After patch:
+
 ```js
 var bn = window.__owPlatform = {isDesktop:!1,isMobile:!1, ... }
 ```
@@ -110,9 +112,10 @@ We replace with `Object.assign` where `__owPlatformOverrides` is applied
 
 ```js
 const PATCH_2 = {
-  name: 'iife-overrides',
-  find:    /(\w+)\.isMobileApp=!0,\1\.isMobile=!0,\1\.isAndroidApp=(\w+),\1\.isIosApp=(\w+),/,
-  replace: 'Object.assign($1,{isMobileApp:!0,isMobile:!0,isAndroidApp:$2,isIosApp:$3},window.__owPlatformOverrides||{}),',
+  name: "iife-overrides",
+  find: /(\w+)\.isMobileApp=!0,\1\.isMobile=!0,\1\.isAndroidApp=(\w+),\1\.isIosApp=(\w+),/,
+  replace:
+    "Object.assign($1,{isMobileApp:!0,isMobile:!0,isAndroidApp:$2,isIosApp:$3},window.__owPlatformOverrides||{}),",
   expectedMatches: 1,
 };
 ```
@@ -121,6 +124,7 @@ The `\1` backreference ensures the same minified variable name is used
 for all four assignments (defensive against future minifier changes).
 
 After patch:
+
 ```js
 Object.assign(bn,{isMobileApp:!0,isMobile:!0,isAndroidApp:Dv,isIosApp:Tv},
               window.__owPlatformOverrides||{}),
@@ -141,8 +145,8 @@ We gate it on the **post-override** value:
 
 ```js
 const PATCH_3 = {
-  name: 'is-mobile-class',
-  find:    /document\.body\.addClass\("is-mobile"\),/,
+  name: "is-mobile-class",
+  find: /document\.body\.addClass\("is-mobile"\),/,
   replace: 'window.__owPlatform.isMobile&&document.body.addClass("is-mobile"),',
   expectedMatches: 1,
 };
@@ -171,45 +175,48 @@ logic for testing.
 
 ```js
 #!/usr/bin/env node
-'use strict';
+"use strict";
 
-const fsp = require('fs/promises');
-const path = require('path');
+const fsp = require("fs/promises");
+const path = require("path");
 
 const PATCHES = [
   {
-    name: 'expose-platform',
-    find:    /var (\w{1,3})=\{isDesktop:!1,isMobile:!1,isDesktopApp:!1/,
-    replace: 'var $1=window.__owPlatform={isDesktop:!1,isMobile:!1,isDesktopApp:!1',
+    name: "expose-platform",
+    find: /var (\w{1,3})=\{isDesktop:!1,isMobile:!1,isDesktopApp:!1/,
+    replace:
+      "var $1=window.__owPlatform={isDesktop:!1,isMobile:!1,isDesktopApp:!1",
     expectedMatches: 1,
   },
   {
-    name: 'iife-overrides',
-    find:    /(\w+)\.isMobileApp=!0,\1\.isMobile=!0,\1\.isAndroidApp=(\w+),\1\.isIosApp=(\w+),/,
-    replace: 'Object.assign($1,{isMobileApp:!0,isMobile:!0,isAndroidApp:$2,isIosApp:$3},window.__owPlatformOverrides||{}),',
+    name: "iife-overrides",
+    find: /(\w+)\.isMobileApp=!0,\1\.isMobile=!0,\1\.isAndroidApp=(\w+),\1\.isIosApp=(\w+),/,
+    replace:
+      "Object.assign($1,{isMobileApp:!0,isMobile:!0,isAndroidApp:$2,isIosApp:$3},window.__owPlatformOverrides||{}),",
     expectedMatches: 1,
   },
   {
-    name: 'is-mobile-class',
-    find:    /document\.body\.addClass\("is-mobile"\),/,
-    replace: 'window.__owPlatform.isMobile&&document.body.addClass("is-mobile"),',
+    name: "is-mobile-class",
+    find: /document\.body\.addClass\("is-mobile"\),/,
+    replace:
+      'window.__owPlatform.isMobile&&document.body.addClass("is-mobile"),',
     expectedMatches: 1,
   },
 ];
 
 async function applyPatches(appJsPath) {
-  let content = await fsp.readFile(appJsPath, 'utf8');
+  let content = await fsp.readFile(appJsPath, "utf8");
 
   for (const patch of PATCHES) {
     // Count matches using a global flag (cloned from the non-global regex).
-    const globalRegex = new RegExp(patch.find.source, 'g');
+    const globalRegex = new RegExp(patch.find.source, "g");
     const matches = content.match(globalRegex) || [];
 
     if (matches.length !== patch.expectedMatches) {
       throw new Error(
         `Patch "${patch.name}" expected ${patch.expectedMatches} match(es), ` +
-        `found ${matches.length}. The minifier may have changed the bundle ` +
-        `layout. Update the regex in scripts/patch-obsidian-mobile.js.`
+          `found ${matches.length}. The minifier may have changed the bundle ` +
+          `layout. Update the regex in scripts/patch-obsidian-mobile.js.`,
       );
     }
 
@@ -217,7 +224,7 @@ async function applyPatches(appJsPath) {
     console.log(`  patched: ${patch.name} (${matches.length}x)`);
   }
 
-  await fsp.writeFile(appJsPath, content, 'utf8');
+  await fsp.writeFile(appJsPath, content, "utf8");
 }
 
 module.exports = { applyPatches, PATCHES };
@@ -226,12 +233,17 @@ module.exports = { applyPatches, PATCHES };
 if (require.main === module) {
   const target = process.argv[2];
   if (!target) {
-    console.error('Usage: node scripts/patch-obsidian-mobile.js <path-to-app.js>');
+    console.error(
+      "Usage: node scripts/patch-obsidian-mobile.js <path-to-app.js>",
+    );
     process.exit(1);
   }
   applyPatches(path.resolve(target))
-    .then(() => console.log('Done.'))
-    .catch(err => { console.error('Error:', err.message); process.exit(1); });
+    .then(() => console.log("Done."))
+    .catch((err) => {
+      console.error("Error:", err.message);
+      process.exit(1);
+    });
 }
 ```
 
@@ -243,11 +255,11 @@ Import the patch module and call it after `extractApk(...)` and before
 `verifyRequired(...)`.
 
 ```js
-const { applyPatches } = require('./patch-obsidian-mobile');
+const { applyPatches } = require("./patch-obsidian-mobile");
 
 // ...inside main() after extractApk(...) and before verifyRequired(...):
-console.log('Applying patches…');
-await applyPatches(path.join(targetDir, 'app.js'));
+console.log("Applying patches…");
+await applyPatches(path.join(targetDir, "app.js"));
 ```
 
 **Output expectation when run:**
@@ -284,16 +296,17 @@ and before the `modules` declaration.
 //
 // Layout mode persists in localStorage. Read by computeLayoutMode().
 function computeLayoutMode() {
-  const pref = localStorage.getItem('obsidian-web:layout-mode') || 'auto';
-  if (pref === 'mobile')  return { isMobile: true,  reason: 'user-pref-mobile' };
-  if (pref === 'desktop') return { isMobile: false, reason: 'user-pref-desktop' };
+  const pref = localStorage.getItem("obsidian-web:layout-mode") || "auto";
+  if (pref === "mobile") return { isMobile: true, reason: "user-pref-mobile" };
+  if (pref === "desktop")
+    return { isMobile: false, reason: "user-pref-desktop" };
   // 'auto' — viewport-based decision
   const small = window.innerWidth < 900 || window.innerHeight < 600;
-  return { isMobile: small, reason: 'auto-' + (small ? 'mobile' : 'desktop') };
+  return { isMobile: small, reason: "auto-" + (small ? "mobile" : "desktop") };
 }
 const layout = computeLayoutMode();
 window.__owPlatformOverrides = { isMobile: layout.isMobile };
-console.log('[obsidian-web] platform overrides:', layout);
+console.log("[obsidian-web] platform overrides:", layout);
 ```
 
 **Remove the now-obsolete MutationObserver cleanup block** in the same
@@ -311,53 +324,57 @@ disturb other agent sessions on ports 9222/9223).
 ```js
 async () => {
   // wait for workspace
-  const wait = ms => new Promise(r => setTimeout(r, ms));
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   for (let i = 0; i < 30; i++) {
-    if (document.querySelector('.workspace')) break;
+    if (document.querySelector(".workspace")) break;
     await wait(1000);
   }
 
-  return JSON.stringify({
-    // patches active?
-    platformGlobal: !!window.__owPlatform,
-    overrides:      window.__owPlatformOverrides,
+  return JSON.stringify(
+    {
+      // patches active?
+      platformGlobal: !!window.__owPlatform,
+      overrides: window.__owPlatformOverrides,
 
-    // post-init platform state
-    plat_isMobile:    window.__owPlatform?.isMobile,
-    plat_isMobileApp: window.__owPlatform?.isMobileApp,  // must still be true!
-    plat_isPhone:     window.__owPlatform?.isPhone,
-    plat_isTablet:    window.__owPlatform?.isTablet,
+      // post-init platform state
+      plat_isMobile: window.__owPlatform?.isMobile,
+      plat_isMobileApp: window.__owPlatform?.isMobileApp, // must still be true!
+      plat_isPhone: window.__owPlatform?.isPhone,
+      plat_isTablet: window.__owPlatform?.isTablet,
 
-    // app uses same value (App captures bn.isMobile at construction)
-    app_isMobile: window.app?.isMobile,
+      // app uses same value (App captures bn.isMobile at construction)
+      app_isMobile: window.app?.isMobile,
 
-    // UI state
-    bodyHasIsMobile:    document.body.classList.contains('is-mobile'),
-    bodyHasIsFloating:  document.body.classList.contains('is-floating-nav'),
-    workspaceExists:    !!document.querySelector('.workspace'),
+      // UI state
+      bodyHasIsMobile: document.body.classList.contains("is-mobile"),
+      bodyHasIsFloating: document.body.classList.contains("is-floating-nav"),
+      workspaceExists: !!document.querySelector(".workspace"),
 
-    // adapter must still be Capacitor (not FileSystemAdapter)
-    adapterMethods: Object.getOwnPropertyNames(
-      Object.getPrototypeOf(window.app?.vault?.adapter || {})
-    ).filter(m => m === 'watchAndStatAll' || m === 'quickList'),
-  }, null, 2);
-}
+      // adapter must still be Capacitor (not FileSystemAdapter)
+      adapterMethods: Object.getOwnPropertyNames(
+        Object.getPrototypeOf(window.app?.vault?.adapter || {}),
+      ).filter((m) => m === "watchAndStatAll" || m === "quickList"),
+    },
+    null,
+    2,
+  );
+};
 ```
 
 **Expected results on desktop viewport (≥900px wide):**
 
-| field | expected |
-|---|---|
-| `platformGlobal` | `true` |
-| `overrides.isMobile` | `false` |
-| `plat_isMobile` | `false` |
-| `plat_isMobileApp` | `true` |
-| `plat_isPhone` | `false` |
-| `plat_isTablet` | `true` |
-| `app_isMobile` | `false` |
-| `bodyHasIsMobile` | `false` |
-| `workspaceExists` | `true` |
-| `adapterMethods` | `['watchAndStatAll', 'quickList']` (Capacitor adapter still active) |
+| field                | expected                                                            |
+| -------------------- | ------------------------------------------------------------------- |
+| `platformGlobal`     | `true`                                                              |
+| `overrides.isMobile` | `false`                                                             |
+| `plat_isMobile`      | `false`                                                             |
+| `plat_isMobileApp`   | `true`                                                              |
+| `plat_isPhone`       | `false`                                                             |
+| `plat_isTablet`      | `true`                                                              |
+| `app_isMobile`       | `false`                                                             |
+| `bodyHasIsMobile`    | `false`                                                             |
+| `workspaceExists`    | `true`                                                              |
+| `adapterMethods`     | `['watchAndStatAll', 'quickList']` (Capacitor adapter still active) |
 
 **Take a screenshot** and confirm visually that the layout is desktop
 (persistent left sidebar, ribbon visible, no mobile toolbar at the
@@ -368,7 +385,7 @@ bottom).
 In DevTools / via eval, simulate switching to mobile mode:
 
 ```js
-localStorage.setItem('obsidian-web:layout-mode', 'mobile');
+localStorage.setItem("obsidian-web:layout-mode", "mobile");
 location.reload();
 ```
 
@@ -378,7 +395,7 @@ mobile toolbar visible.
 Then switch to desktop explicitly:
 
 ```js
-localStorage.setItem('obsidian-web:layout-mode', 'desktop');
+localStorage.setItem("obsidian-web:layout-mode", "desktop");
 location.reload();
 ```
 
@@ -477,13 +494,13 @@ The plan is complete when **all** of the following are true:
 
 In `obsidian-mobile/app.js` (v1.12.7, 3,754,511 bytes):
 
-| Item | Approx. offset |
-|---|---|
-| Platform object definition (`var bn = {...}`) | ~294,354 |
-| `xv = window.Capacitor && "web" !== getPlatform()` | ~714,200 |
-| Entry IIFE `Promise.all([fv, Av.getInfo, Nv.getInfo])` | ~3,727,441 |
-| Unconditional flag assignment `bn.isMobileApp=!0,...` | ~3,728,028 |
-| `document.body.addClass("is-mobile")` | within IIFE, just after flag assignment |
+| Item                                                   | Approx. offset                          |
+| ------------------------------------------------------ | --------------------------------------- |
+| Platform object definition (`var bn = {...}`)          | ~294,354                                |
+| `xv = window.Capacitor && "web" !== getPlatform()`     | ~714,200                                |
+| Entry IIFE `Promise.all([fv, Av.getInfo, Nv.getInfo])` | ~3,727,441                              |
+| Unconditional flag assignment `bn.isMobileApp=!0,...`  | ~3,728,028                              |
+| `document.body.addClass("is-mobile")`                  | within IIFE, just after flag assignment |
 
 These offsets will drift between versions. The regex patterns are the
 source of truth — do not rely on offsets.

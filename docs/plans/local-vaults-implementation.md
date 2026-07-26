@@ -15,10 +15,10 @@ and sync to other devices exclusively through obsidian-livesync ↔ CouchDB.
 The two types coexist. The user picks which kind to create on the
 starter screen.
 
-| Vault type | Storage | Sync between devices | Sync between tabs |
-|---|---|---|---|
-| **Server** (current) | Server filesystem, `/api/fs/*` | Each device opens obsidian-web; all share the server vault | chokidar → WebSocket |
-| **Local** (this plan) | Browser OPFS, per-origin per-browser | LiveSync ↔ CouchDB (mandatory for cross-device) | BroadcastChannel + leader election |
+| Vault type            | Storage                              | Sync between devices                                       | Sync between tabs                  |
+| --------------------- | ------------------------------------ | ---------------------------------------------------------- | ---------------------------------- |
+| **Server** (current)  | Server filesystem, `/api/fs/*`       | Each device opens obsidian-web; all share the server vault | chokidar → WebSocket               |
+| **Local** (this plan) | Browser OPFS, per-origin per-browser | LiveSync ↔ CouchDB (mandatory for cross-device)            | BroadcastChannel + leader election |
 
 **Why per-vault, not a full deployment-mode pivot?** See
 `docs/plans/future-direction-client-only.md` for the rejected pure-client
@@ -31,12 +31,12 @@ implemented, install script ready, plugin works end-to-end on a server vault).
 
 ## Dependencies — confirm before starting
 
-| Pre-requisite | Where it lives | What "done" means |
-|---|---|---|
+| Pre-requisite                        | Where it lives                              | What "done" means                                                                                                                                               |
+| ------------------------------------ | ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `App.requestUrl` real implementation | `client-mobile/shims/capacitor-shim.js:439` | Replaced the stub `() => Promise.resolve({})` with a real fetch wrapper that round-trips base64. All 3 Phase 2 self-tests of `livesync-implementation.md` pass. |
-| LiveSync system plugin | `<repo>/plugins/obsidian-livesync/` | `scripts/install-livesync.js` ran successfully. Plugin loads from system overlay. |
-| End-to-end sync on a server vault | manual E2E (Phase 4 of livesync plan) | Edit-on-web propagates to a second device through a real CouchDB within ~10s, and vice versa. |
-| `crypto.createHash` async path | `client-mobile/boot.js:128` | Already done — works for SHA-1/256/512 via `subtle.digest`. |
+| LiveSync system plugin               | `<repo>/plugins/obsidian-livesync/`         | `scripts/install-livesync.js` ran successfully. Plugin loads from system overlay.                                                                               |
+| End-to-end sync on a server vault    | manual E2E (Phase 4 of livesync plan)       | Edit-on-web propagates to a second device through a real CouchDB within ~10s, and vice versa.                                                                   |
+| `crypto.createHash` async path       | `client-mobile/boot.js:128`                 | Already done — works for SHA-1/256/512 via `subtle.digest`.                                                                                                     |
 
 If any of these are still red, **stop and finish them first.** Local
 vaults without working LiveSync = a vault you can't escape.
@@ -44,6 +44,7 @@ vaults without working LiveSync = a vault you can't escape.
 ## Scope boundaries
 
 **In scope for v1:**
+
 - OPFS-backed adapter that fully replaces the HTTP FS plugin for local vaults
 - Per-vault routing: same `CapacitorAdapter` surface, different backend per vault
 - Browser-side local vault registry (`localStorage`)
@@ -53,6 +54,7 @@ vaults without working LiveSync = a vault you can't escape.
 - Documentation (`docs/local-vaults.md`)
 
 **Out of scope for v1 (separate follow-up plans if needed):**
+
 - Export/import vault as `.zip` (mention in pitfalls; recommend adding next)
 - Service worker / installable PWA (recommend adding next)
 - Multi-tab leader election with BroadcastChannel (single-tab assumption
@@ -66,15 +68,15 @@ vaults without working LiveSync = a vault you can't escape.
 
 ## What already exists (do not redo)
 
-| Component | Status |
-|---|---|
-| Mobile runtime (`/mobile`) | ✅ done |
-| `CapacitorAdapter` via shim | ✅ done (`client-mobile/shims/capacitor-shim.js`) |
-| System plugin overlay | ✅ done — applies to local vaults too via the same `/api/fs` fallback for `.obsidian/plugins/*` reads (system plugins are NOT stored in OPFS; they're loaded from the server-static `<repo>/plugins/`) |
-| Layout-switcher plugin | ✅ done |
-| LiveSync system plugin | ✅ done (Phase 3 of `livesync-implementation.md`) |
-| `App.requestUrl` | ✅ done (Phase 1 of `livesync-implementation.md`) |
-| Vault selection from `?vault=<id>` | ✅ done (`client-mobile/boot.js:40-41`) |
+| Component                          | Status                                                                                                                                                                                                 |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Mobile runtime (`/mobile`)         | ✅ done                                                                                                                                                                                                |
+| `CapacitorAdapter` via shim        | ✅ done (`client-mobile/shims/capacitor-shim.js`)                                                                                                                                                      |
+| System plugin overlay              | ✅ done — applies to local vaults too via the same `/api/fs` fallback for `.obsidian/plugins/*` reads (system plugins are NOT stored in OPFS; they're loaded from the server-static `<repo>/plugins/`) |
+| Layout-switcher plugin             | ✅ done                                                                                                                                                                                                |
+| LiveSync system plugin             | ✅ done (Phase 3 of `livesync-implementation.md`)                                                                                                                                                      |
+| `App.requestUrl`                   | ✅ done (Phase 1 of `livesync-implementation.md`)                                                                                                                                                      |
+| Vault selection from `?vault=<id>` | ✅ done (`client-mobile/boot.js:40-41`)                                                                                                                                                                |
 
 ## High-level architecture
 
@@ -148,7 +150,7 @@ Skeleton (full implementation to be written):
 ```js
 // client-mobile/storage/opfs-store.js
 (function () {
-  'use strict';
+  "use strict";
 
   // ── Internals ─────────────────────────────────────────────────────────
   async function rootDir() {
@@ -157,7 +159,7 @@ Skeleton (full implementation to be written):
 
   async function vaultDir(vaultId, { create = false } = {}) {
     const root = await rootDir();
-    const vaults = await root.getDirectoryHandle('vaults', { create });
+    const vaults = await root.getDirectoryHandle("vaults", { create });
     return await vaults.getDirectoryHandle(vaultId, { create });
   }
 
@@ -168,8 +170,8 @@ Skeleton (full implementation to be written):
    */
   async function resolve(vaultId, relPath, opts = {}) {
     const dir = await vaultDir(vaultId, { create: !!opts.create });
-    if (!relPath || relPath === '/' || relPath === '.') return dir;
-    const parts = relPath.split('/').filter(Boolean);
+    if (!relPath || relPath === "/" || relPath === ".") return dir;
+    const parts = relPath.split("/").filter(Boolean);
     const last = parts.pop();
     let cur = dir;
     for (const part of parts) {
@@ -177,8 +179,11 @@ Skeleton (full implementation to be written):
     }
     if (opts.isFile === undefined) {
       // Try file first, then directory. Caller should specify when possible.
-      try { return await cur.getFileHandle(last); }
-      catch (_) { return await cur.getDirectoryHandle(last); }
+      try {
+        return await cur.getFileHandle(last);
+      } catch (_) {
+        return await cur.getDirectoryHandle(last);
+      }
     }
     return opts.isFile
       ? await cur.getFileHandle(last, { create: !!opts.create })
@@ -188,25 +193,51 @@ Skeleton (full implementation to be written):
   // ── Public API ────────────────────────────────────────────────────────
   function makeStore(vaultId) {
     return {
-      async readFile(opts) { /* … */ },
-      async writeFile(opts) { /* … */ },
-      async appendFile(opts) { /* … */ },
-      async deleteFile(opts) { /* … */ },
-      async mkdir(opts) { /* … */ },
-      async rmdir(opts) { /* … */ },
-      async readdir(opts) { /* … */ },
-      async stat(opts) { /* … */ },
-      async rename(opts) { /* … */ },
-      async copy(opts) { /* … */ },
-      async trash(opts) { /* delegate to deleteFile */ },
+      async readFile(opts) {
+        /* … */
+      },
+      async writeFile(opts) {
+        /* … */
+      },
+      async appendFile(opts) {
+        /* … */
+      },
+      async deleteFile(opts) {
+        /* … */
+      },
+      async mkdir(opts) {
+        /* … */
+      },
+      async rmdir(opts) {
+        /* … */
+      },
+      async readdir(opts) {
+        /* … */
+      },
+      async stat(opts) {
+        /* … */
+      },
+      async rename(opts) {
+        /* … */
+      },
+      async copy(opts) {
+        /* … */
+      },
+      async trash(opts) {
+        /* delegate to deleteFile */
+      },
       async getUri(opts) {
         // OPFS files have no stable HTTP URL. Return a blob URL.
         const fh = await resolve(vaultId, opts.path, { isFile: true });
         const file = await fh.getFile();
         return { uri: URL.createObjectURL(file) };
       },
-      async startWatch(opts) { /* no-op — OPFS has no external changes */ },
-      async stopWatch(opts) { /* no-op */ },
+      async startWatch(opts) {
+        /* no-op — OPFS has no external changes */
+      },
+      async stopWatch(opts) {
+        /* no-op */
+      },
       async addListener(eventName, callback) {
         return Promise.resolve({ remove: () => {} });
       },
@@ -217,13 +248,27 @@ Skeleton (full implementation to be written):
         return { children: await walkTree(vaultId) };
       },
       // identity stubs — match existing Filesystem behavior
-      async setTimes()           { return {}; },
-      async verifyIcloud()       { return {}; },
-      async open()               { return {}; },
-      async checkPerms()         { return { publicStorage: 'granted' }; },
-      async requestPermissions() { return { publicStorage: 'granted' }; },
-      async requestPerms()       { return { publicStorage: 'granted' }; },
-      async choose()             { return null; },
+      async setTimes() {
+        return {};
+      },
+      async verifyIcloud() {
+        return {};
+      },
+      async open() {
+        return {};
+      },
+      async checkPerms() {
+        return { publicStorage: "granted" };
+      },
+      async requestPermissions() {
+        return { publicStorage: "granted" };
+      },
+      async requestPerms() {
+        return { publicStorage: "granted" };
+      },
+      async choose() {
+        return null;
+      },
     };
   }
 
@@ -272,9 +317,11 @@ vault root** (e.g. `"Notes/2026/foo.md"`), NOT just the leaf name.
 
 **Critical pitfall (learned 2026-05-12 the hard way):** Obsidian's
 `CapacitorAdapter` consumes the result with:
+
 ```js
 for (const i of e.children) this.quickList("", i);
 ```
+
 `quickList` does NOT recurse into `entry.children`. A nested tree with
 `children: [...]` arrays will result in **only the top level being
 indexed** — directories will appear in the file explorer but their
@@ -287,30 +334,38 @@ flat entry per file/dir with its full relative path). The OPFS
 implementation must match.
 
 Reference skeleton:
+
 ```js
 async function walkTree(vaultId) {
   const children = [];
   async function walk(dirHandle, prefix) {
     for await (const [name, handle] of dirHandle.entries()) {
-      const relPath = prefix ? prefix + '/' + name : name;
-      if (handle.kind === 'directory') {
+      const relPath = prefix ? prefix + "/" + name : name;
+      if (handle.kind === "directory") {
         children.push({
-          name: relPath, type: 'directory',
-          size: 0, mtime: 0, ctime: 0, uri: '',
+          name: relPath,
+          type: "directory",
+          size: 0,
+          mtime: 0,
+          ctime: 0,
+          uri: "",
         });
         await walk(handle, relPath);
       } else {
         const file = await handle.getFile();
         children.push({
-          name: relPath, type: 'file',
-          size: file.size, mtime: file.lastModified,
-          ctime: file.lastModified, uri: '',
+          name: relPath,
+          type: "file",
+          size: file.size,
+          mtime: file.lastModified,
+          ctime: file.lastModified,
+          uri: "",
         });
       }
     }
   }
   const root = await vaultDir(vaultId);
-  await walk(root, '');
+  await walk(root, "");
   return children;
 }
 ```
@@ -320,43 +375,51 @@ vaults these can be no-ops. Reason: every write goes through us, and
 Obsidian's internal event bus already fires `vault.on('modify')` when
 the adapter writes. There are no "external" changes.
 
-  Exception: when LiveSync pulls a change from CouchDB, it calls
-  `vault.adapter.write()` directly. Obsidian's modify event still fires.
-  So no separate watcher is needed.
+Exception: when LiveSync pulls a change from CouchDB, it calls
+`vault.adapter.write()` directly. Obsidian's modify event still fires.
+So no separate watcher is needed.
 
 #### Acceptance for Phase 1
 
 Run from DevTools console (after manually setting `window.__owVaultType='local'`):
 
 ```js
-const s = window.__owOpfsStore.makeStore('test-local');
-await s.mkdir({ path: 'Notes', recursive: false });
-await s.writeFile({ path: 'Notes/hello.md', data: 'Hi', encoding: 'utf8' });
-const r = await s.readFile({ path: 'Notes/hello.md', encoding: 'utf8' });
-console.assert(r.data === 'Hi');
-const list = await s.readdir({ path: 'Notes' });
-console.assert(list.files.length === 1 && list.files[0].name === 'hello.md');
+const s = window.__owOpfsStore.makeStore("test-local");
+await s.mkdir({ path: "Notes", recursive: false });
+await s.writeFile({ path: "Notes/hello.md", data: "Hi", encoding: "utf8" });
+const r = await s.readFile({ path: "Notes/hello.md", encoding: "utf8" });
+console.assert(r.data === "Hi");
+const list = await s.readdir({ path: "Notes" });
+console.assert(list.files.length === 1 && list.files[0].name === "hello.md");
 // Binary round-trip:
-const bin = btoa('hello\x00world');
-await s.writeFile({ path: 'bin.dat', data: bin });
-const back = await s.readFile({ path: 'bin.dat' });
+const bin = btoa("hello\x00world");
+await s.writeFile({ path: "bin.dat", data: bin });
+const back = await s.readFile({ path: "bin.dat" });
 console.assert(back.data === bin);
 
 // watchAndStatAll — MUST return FLAT list with full relative paths.
 // This guards against regressing the 2026-05-12 nested-tree bug.
-await s.mkdir({ path: 'A/B/C', recursive: true });
-await s.writeFile({ path: 'A/B/C/deep.md', data: 'x', encoding: 'utf8' });
+await s.mkdir({ path: "A/B/C", recursive: true });
+await s.writeFile({ path: "A/B/C/deep.md", data: "x", encoding: "utf8" });
 const tree = await s.watchAndStatAll({});
 const names = tree.children.map((e) => e.name).sort();
-console.assert(names.includes('Notes'),         'top-level dir present');
-console.assert(names.includes('Notes/hello.md'),'nested file present with full path');
-console.assert(names.includes('A/B/C/deep.md'), 'deeply nested file present with full path');
-console.assert(tree.children.every((e) => e.children === undefined),
-  'entries must NOT have a children property — flat list only');
+console.assert(names.includes("Notes"), "top-level dir present");
+console.assert(
+  names.includes("Notes/hello.md"),
+  "nested file present with full path",
+);
+console.assert(
+  names.includes("A/B/C/deep.md"),
+  "deeply nested file present with full path",
+);
+console.assert(
+  tree.children.every((e) => e.children === undefined),
+  "entries must NOT have a children property — flat list only",
+);
 
 // Cleanup:
 const root = await navigator.storage.getDirectory();
-await root.removeEntry('vaults', { recursive: true });
+await root.removeEntry("vaults", { recursive: true });
 ```
 
 All assertions must pass without errors. The `watchAndStatAll` assertions
@@ -376,13 +439,16 @@ tag in both `client-mobile/index.html` and the starter wrapper.)
 ```js
 // client/local-vault-registry.js
 (function () {
-  'use strict';
+  "use strict";
 
-  const KEY = 'obsidian-web:local-vaults';
+  const KEY = "obsidian-web:local-vaults";
 
   function load() {
-    try { return JSON.parse(localStorage.getItem(KEY) || '{}'); }
-    catch (_) { return {}; }
+    try {
+      return JSON.parse(localStorage.getItem(KEY) || "{}");
+    } catch (_) {
+      return {};
+    }
   }
   function save(map) {
     localStorage.setItem(KEY, JSON.stringify(map));
@@ -390,7 +456,9 @@ tag in both `client-mobile/index.html` and the starter wrapper.)
   function uuid() {
     const arr = new Uint8Array(8);
     crypto.getRandomValues(arr);
-    return Array.from(arr).map((b) => b.toString(16).padStart(2, '0')).join('');
+    return Array.from(arr)
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
   }
 
   window.__owLocalVaults = {
@@ -410,7 +478,7 @@ tag in both `client-mobile/index.html` and the starter wrapper.)
     create(name) {
       const map = load();
       const id = uuid();
-      map[id] = { name: name || 'Untitled', createdAt: Date.now() };
+      map[id] = { name: name || "Untitled", createdAt: Date.now() };
       save(map);
       return { id, name: map[id].name };
     },
@@ -443,12 +511,13 @@ After line 41 (`var VAULT_ID = params.get('vault') || …`), add:
 // Vault type: 'local' (OPFS) or 'server' (HTTP /api/fs). Determined by
 // whether the id is present in the browser-side local vault registry.
 // Loaded synchronously via <script> before boot.js.
-var VAULT_TYPE = (window.__owLocalVaults && window.__owLocalVaults.has(VAULT_ID))
-  ? 'local'
-  : 'server';
+var VAULT_TYPE =
+  window.__owLocalVaults && window.__owLocalVaults.has(VAULT_ID)
+    ? "local"
+    : "server";
 window.__owVaultType = VAULT_TYPE;
-window.__owVaultId   = VAULT_ID;
-console.log('[obsidian-web] vault type:', VAULT_TYPE, 'id:', VAULT_ID);
+window.__owVaultId = VAULT_ID;
+console.log("[obsidian-web] vault type:", VAULT_TYPE, "id:", VAULT_ID);
 ```
 
 Then change the **vault verification block** (currently lines 215-265).
@@ -456,30 +525,31 @@ The current code calls `fetch('/api/fs/stat?vault=…&path=')`. For local
 vaults this would 404. Branch:
 
 ```js
-setStatus('Verifying vault...');
+setStatus("Verifying vault...");
 
 var verifyPromise;
-if (VAULT_TYPE === 'local') {
+if (VAULT_TYPE === "local") {
   // Ensure the OPFS directory exists. Creating it is idempotent.
   verifyPromise = (async function () {
-    if (!window.__owOpfsStore) throw new Error('OPFS store not loaded');
+    if (!window.__owOpfsStore) throw new Error("OPFS store not loaded");
     const root = await navigator.storage.getDirectory();
-    const vaults = await root.getDirectoryHandle('vaults', { create: true });
+    const vaults = await root.getDirectoryHandle("vaults", { create: true });
     await vaults.getDirectoryHandle(VAULT_ID, { create: true });
     return { isDirectory: true };
   })();
 } else {
-  verifyPromise = fetch('/api/fs/stat?vault=' + encodeURIComponent(VAULT_ID) + '&path=')
-    .then(function (res) {
-      if (!res.ok) throw new Error('Vault not found (HTTP ' + res.status + ')');
-      return res.json();
-    });
+  verifyPromise = fetch(
+    "/api/fs/stat?vault=" + encodeURIComponent(VAULT_ID) + "&path=",
+  ).then(function (res) {
+    if (!res.ok) throw new Error("Vault not found (HTTP " + res.status + ")");
+    return res.json();
+  });
 }
 
 verifyPromise
   .then(function (stat) {
-    if (!stat || (!stat.isDirectory && stat.type !== 'directory')) {
-      throw new Error('Vault path is not a directory');
+    if (!stat || (!stat.isDirectory && stat.type !== "directory")) {
+      throw new Error("Vault path is not a directory");
     }
     // … existing script-injection logic continues unchanged …
   })
@@ -515,12 +585,14 @@ Pattern:
 
 ```js
 // Rename the current Filesystem object to HttpFilesystem.
-const HttpFilesystem = { /* current implementation, unchanged */ };
+const HttpFilesystem = {
+  /* current implementation, unchanged */
+};
 
 // At call time, choose backend per call (in case vault type changes
 // mid-session, which it currently can't, but cheap defensive code).
 function fsBackend() {
-  if (window.__owVaultType === 'local') {
+  if (window.__owVaultType === "local") {
     if (!window.__owLocalFs) {
       window.__owLocalFs = window.__owOpfsStore.makeStore(window.__owVaultId);
     }
@@ -529,12 +601,15 @@ function fsBackend() {
   return HttpFilesystem;
 }
 
-const Filesystem = new Proxy({}, {
-  get(_target, prop) {
-    const backend = fsBackend();
-    return backend[prop];
+const Filesystem = new Proxy(
+  {},
+  {
+    get(_target, prop) {
+      const backend = fsBackend();
+      return backend[prop];
+    },
   },
-});
+);
 ```
 
 **Pitfall:** Methods that aren't on the OPFS store (e.g. `setTimes`,
@@ -613,15 +688,16 @@ Record the findings in a comment at the top of the modified file.
 
    ```js
    // After the existing logic that returns server vaults:
-   const localVaults = (typeof window !== 'undefined' && window.__owLocalVaults)
-     ? window.__owLocalVaults.list().map((v) => ({
-         id:     v.id,
-         path:   '(local)/' + v.id,
-         name:   v.name,
-         ts:     v.createdAt,
-         _local: true,
-       }))
-     : [];
+   const localVaults =
+     typeof window !== "undefined" && window.__owLocalVaults
+       ? window.__owLocalVaults.list().map((v) => ({
+           id: v.id,
+           path: "(local)/" + v.id,
+           name: v.name,
+           ts: v.createdAt,
+           _local: true,
+         }))
+       : [];
    const merged = [...localVaults, ...serverVaults];
    ```
 
@@ -632,12 +708,14 @@ Record the findings in a comment at the top of the modified file.
 
 3. **Add "Create local vault" button.** Inject in `client/starter.html`
    after Obsidian's starter scripts load. Wire it to:
+
    ```js
-   const name = prompt('Name your local vault:');
+   const name = prompt("Name your local vault:");
    if (!name) return;
    const { id } = window.__owLocalVaults.create(name);
-   location.href = '/mobile?vault=' + encodeURIComponent(id);
+   location.href = "/mobile?vault=" + encodeURIComponent(id);
    ```
+
    Plain `prompt()` is fine for v1 — match the existing UX of the
    server-vault "Open folder" prompt picker.
 
@@ -734,6 +812,7 @@ Hook into that observer to also fire the wizard check.
 
 **`docs/walkthrough.md`** — new dated entry at top following the existing
 pattern:
+
 - What was done (this plan, summary)
 - Architecture decisions (any deviations from the plan)
 - Verification results
@@ -829,7 +908,7 @@ existing convention — see `docs/plans/archive/` for prior examples).
 11. **`watchAndStatAll` MUST return a flat list, not a tree.** This
     is the #1 most likely bug. `CapacitorAdapter`'s consumer iterates
     `e.children` exactly once (non-recursively) and calls `quickList("",
-    entry)` on each — `quickList` uses `entry.name` as the **full
+entry)` on each — `quickList` uses `entry.name` as the **full
     relative path**. A nested-tree result will populate only the root
     level; subdirectories will appear empty in the file explorer.
     See the `watchAndStatAll` section in Phase 1 for the correct
@@ -880,41 +959,41 @@ The plan is complete when **all** of the following are true:
 In `client-mobile/shims/capacitor-shim.js` (current line numbers as of
 the writing of this plan; may drift):
 
-| Item | Approx. line |
-|---|---|
-| `getVaultId()` helper | 55 |
-| `fullPath()` helper | 86 |
-| `const Filesystem = { … }` start | 122 |
-| `Filesystem.readFile` | 124 |
-| `Filesystem.writeFile` | 151 |
-| `Filesystem.watchAndStatAll` | 345 |
-| `Filesystem.addListener` | 374 |
-| `Filesystem` close brace | 394 |
-| `const App = { … }` | 427 |
-| `App.requestUrl` | 439 |
-| `const plugins = { … }` | 503 |
+| Item                             | Approx. line |
+| -------------------------------- | ------------ |
+| `getVaultId()` helper            | 55           |
+| `fullPath()` helper              | 86           |
+| `const Filesystem = { … }` start | 122          |
+| `Filesystem.readFile`            | 124          |
+| `Filesystem.writeFile`           | 151          |
+| `Filesystem.watchAndStatAll`     | 345          |
+| `Filesystem.addListener`         | 374          |
+| `Filesystem` close brace         | 394          |
+| `const App = { … }`              | 427          |
+| `App.requestUrl`                 | 439          |
+| `const plugins = { … }`          | 503          |
 
 In `client-mobile/boot.js`:
 
-| Item | Approx. line |
-|---|---|
-| `VAULT_ID` resolution | 41 |
-| `setStatus('Verifying vault...')` | 215 |
-| `fetch('/api/fs/stat?vault=…')` (verification call) | 218 |
-| Script injection loop | 230 |
-| Workspace MutationObserver | 251 |
+| Item                                                | Approx. line |
+| --------------------------------------------------- | ------------ |
+| `VAULT_ID` resolution                               | 41           |
+| `setStatus('Verifying vault...')`                   | 215          |
+| `fetch('/api/fs/stat?vault=…')` (verification call) | 218          |
+| Script injection loop                               | 230          |
+| Workspace MutationObserver                          | 251          |
 
 In `client-mobile/index.html`:
 
-| Item | Approx. line |
-|---|---|
-| `<script src=".../capacitor-shim.js">` | 36 |
-| `<script src=".../boot.js">` | 52 |
+| Item                                   | Approx. line |
+| -------------------------------------- | ------------ |
+| `<script src=".../capacitor-shim.js">` | 36           |
+| `<script src=".../boot.js">`           | 52           |
 
 In `server/system-plugins.js`:
 
-| Item | Function |
-|---|---|
+| Item                            | Function                                                                                                            |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
 | `tryGetSystemFilePath(relPath)` | Resolves a `.obsidian/plugins/<id>/<file>` path to its repo location. Reuse in the new `vault=__system__` endpoint. |
 
 ## Reference: testing via gui-host browser
@@ -929,16 +1008,16 @@ OPFS inspection from console:
 ```js
 await (async () => {
   const root = await navigator.storage.getDirectory();
-  async function walk(dir, prefix='') {
+  async function walk(dir, prefix = "") {
     const out = [];
     for await (const [name, handle] of dir.entries()) {
-      const path = prefix + '/' + name;
-      if (handle.kind === 'directory') {
-        out.push(path + '/');
-        out.push(...await walk(handle, path));
+      const path = prefix + "/" + name;
+      if (handle.kind === "directory") {
+        out.push(path + "/");
+        out.push(...(await walk(handle, path)));
       } else {
         const f = await handle.getFile();
-        out.push(path + ' (' + f.size + 'b)');
+        out.push(path + " (" + f.size + "b)");
       }
     }
     return out;
@@ -952,7 +1031,9 @@ Clearing OPFS for a fresh test run:
 ```js
 await (async () => {
   const root = await navigator.storage.getDirectory();
-  try { await root.removeEntry('vaults', { recursive: true }); } catch (_) {}
+  try {
+    await root.removeEntry("vaults", { recursive: true });
+  } catch (_) {}
 })();
-localStorage.removeItem('obsidian-web:local-vaults');
+localStorage.removeItem("obsidian-web:local-vaults");
 ```

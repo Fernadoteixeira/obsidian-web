@@ -18,6 +18,7 @@
 
 ‏אין תלויות. ‏בנוי על main (`a5f5a4d`). ‏נוגע ‏רק ב-`src/client-mobile/shims/capacitor-shim.js`.
 ‏זהו ה-slice הראשון ‏מתוך 3 ‏לאינטגרציית LiveSync:
+
 - **Slice A (זה)** — `App.requestUrl` ‏אמיתי (fetch wrapper). `depends_on: []`.
 - Slice B — `scripts/install-livesync.js` (‏מוריד את הפלאגין). `depends_on: []` (‏עצמאי, ‏מקביל).
 - Slice C — E2E ‏מול CouchDB + docs. `depends_on: [A, B]`.
@@ -47,6 +48,7 @@ cd .worktrees/livesync-requesturl
 
 ‏ה-self-test ‏של Phase 2 ‏רץ ב-DevTools console ‏מול `/mobile`. ‏ראה
 `docs/dev-setup.md` ‏ל-workflow ‏המלא ‏של gui-host. ‏בקצרה:
+
 - session `obsmobile`, port 9224, `--user-data-dir=/tmp/pw-obsidian-mobile`.
 - ‏נווט ל-`http://localhost:3000/mobile?vault=5b68fb93d875ad63` (demo vault מקומי).
 - ‏המתן ל-`.workspace`, ‏אז ‏הרץ ‏את ה-self-test (§5 DoD).
@@ -55,6 +57,7 @@ cd .worktrees/livesync-requesturl
 ### Reading list
 
 **must-read**:
+
 - `docs/plans/livesync-implementation.md` ‏שורות 51-133 — ‏חוזה ה-request/response ‏המדויק.
 - `src/client-mobile/shims/capacitor-shim.js` ‏שורות 548-562 (`const App`, ‏ה-stub @560)
   ‏ושורות 188-213 (‏דפוס ה-base64 ‏הקיים ב-Filesystem readFile/writeFile — **‏לשימוש-חוזר**).
@@ -75,15 +78,15 @@ cd .worktrees/livesync-requesturl
 
 ## §2 — Scope
 
-| ‏פיצ'ר | ‏כן/לא | ‏לאן |
-|------|------|------|
-| `App.requestUrl` ‏עטיפת fetch (GET/POST/PUT, headers, body, binary) | ✅ | Commit 1 |
-| base64↔ArrayBuffer helpers ‏(reuse/extract) + unit tests | ✅ | Commit 0 |
-| self-test ‏בדפדפן (GET JSON, POST echo, binary PNG) | ✅ | Phase 2 / DoD |
-| ‏הורדת ‏פלאגין LiveSync | ❌ | Slice B |
-| ‏בדיקת CouchDB ‏אמיתי | ❌ | Slice C |
-| `CapacitorHttp.request` | ❌ | ‏לא speculative — ‏רק ‏אם ‏נראה ‏בקונסול |
-| server-side proxy | ❌ | ‏**‏נדחה ‏מפורשות** (PLAN.md) — fetch ‏ישיר + CORS |
+| ‏פיצ'ר                                                              | ‏כן/לא | ‏לאן                                               |
+| ------------------------------------------------------------------- | ------ | -------------------------------------------------- |
+| `App.requestUrl` ‏עטיפת fetch (GET/POST/PUT, headers, body, binary) | ✅     | Commit 1                                           |
+| base64↔ArrayBuffer helpers ‏(reuse/extract) + unit tests            | ✅     | Commit 0                                           |
+| self-test ‏בדפדפן (GET JSON, POST echo, binary PNG)                 | ✅     | Phase 2 / DoD                                      |
+| ‏הורדת ‏פלאגין LiveSync                                             | ❌     | Slice B                                            |
+| ‏בדיקת CouchDB ‏אמיתי                                               | ❌     | Slice C                                            |
+| `CapacitorHttp.request`                                             | ❌     | ‏לא speculative — ‏רק ‏אם ‏נראה ‏בקונסול           |
+| server-side proxy                                                   | ❌     | ‏**‏נדחה ‏מפורשות** (PLAN.md) — fetch ‏ישיר + CORS |
 
 ---
 
@@ -116,11 +119,13 @@ cd .worktrees/livesync-requesturl
 ‏אבל inline. ‏נחלץ ‏ל-2 ‏פונקציות ‏ברמת-המודול ‏וננצל ‏אותן ‏גם ב-requestUrl ‏וגם ב-Filesystem.
 
 **‏קבצים שמשתנים**:
+
 - `src/client-mobile/shims/capacitor-shim.js` — ‏הוסף ‏ברמת-המודול:
+
   ```js
   // base64 string → ArrayBuffer
   function base64ToArrayBuffer(b64) {
-    const bin = atob(b64 || '');
+    const bin = atob(b64 || "");
     const arr = new Uint8Array(bin.length);
     for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
     return arr.buffer;
@@ -129,16 +134,18 @@ cd .worktrees/livesync-requesturl
   function arrayBufferToBase64(buf) {
     const bytes = new Uint8Array(buf);
     const CHUNK = 0x8000;
-    let s = '';
+    let s = "";
     for (let i = 0; i < bytes.length; i += CHUNK) {
       s += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
     }
     return btoa(s);
   }
   ```
+
   ‏ושנה ‏את ‏Filesystem readFile/writeFile ‏להשתמש ‏בהן (‏החלפת ‏ה-inline, ‏בלי ‏שינוי ‏התנהגות).
 
 **‏קבצים חדשים**:
+
 - `src/client-mobile/test/requesturl-base64.test.js` — round-trip ‏על: ‏טקסט ASCII,
   ‏UTF-8 (‏עברית), ‏בינארי >65KB (‏לוודא ‏שה-chunking ‏לא ‏שובר), ‏מחרוזת ‏ריקה.
 
@@ -152,8 +159,10 @@ cd .worktrees/livesync-requesturl
 ### Commit 1 — App.requestUrl impl (approach: **manual** — browser self-test)
 
 **‏קבצים שמשתנים**:
+
 - `src/client-mobile/shims/capacitor-shim.js` — ‏החלף ‏את ‏שורה 560
   (`requestUrl: () => Promise.resolve({})`) ‏בממומש:
+
   ```js
   async requestUrl(opts) {
     const { url, method, contentType, headers, body, binary } = opts;
@@ -181,6 +190,7 @@ cd .worktrees/livesync-requesturl
     return { status: res.status, headers: respHeaders, body: arrayBufferToBase64(respBuffer) };
   }
   ```
+
   > **‏קריטי**: `body` ‏בתשובה ‏**‏תמיד** base64 (‏גם ‏טקסט; ‏body ‏ריק → `''`). Obsidian
   > ‏מריץ `atob` ‏ללא-תנאי. ‏אל ‏תחזיר ‏טקסט ‏גולמי ‏או `{}`.
   > **‏שגיאות-רשת**: ‏אם `fetch` ‏זורק (CORS/DNS/down) — ‏תן ‏ל-rejection ‏להתפשט. LiveSync ‏מטפל.
@@ -201,42 +211,59 @@ cd .worktrees/livesync-requesturl
 ```js
 async () => {
   const r1 = await window.app.requestUrl({
-    url: 'https://api.github.com/repos/obsidianmd/obsidian-releases/releases/latest', method: 'GET' });
+    url: "https://api.github.com/repos/obsidianmd/obsidian-releases/releases/latest",
+    method: "GET",
+  });
   const r2 = await window.app.requestUrl({
-    url: 'https://httpbin.org/post', method: 'POST',
-    contentType: 'application/json', body: JSON.stringify({ hello: 'world' }) });
-  const r3 = await window.app.requestUrl({ url: 'https://httpbin.org/image/png', method: 'GET' });
-  return JSON.stringify({
-    t1: { status: r1.status, hasTag: !!r1.json?.tag_name },
-    t2: { status: r2.status, echoed: r2.json?.json?.hello },
-    t3: { status: r3.status, bytes: r3.arrayBuffer.byteLength,
-          png: new Uint8Array(r3.arrayBuffer).slice(0,4).join(',') === '137,80,78,71' },
-  }, null, 2);
-}
+    url: "https://httpbin.org/post",
+    method: "POST",
+    contentType: "application/json",
+    body: JSON.stringify({ hello: "world" }),
+  });
+  const r3 = await window.app.requestUrl({
+    url: "https://httpbin.org/image/png",
+    method: "GET",
+  });
+  return JSON.stringify(
+    {
+      t1: { status: r1.status, hasTag: !!r1.json?.tag_name },
+      t2: { status: r2.status, echoed: r2.json?.json?.hello },
+      t3: {
+        status: r3.status,
+        bytes: r3.arrayBuffer.byteLength,
+        png:
+          new Uint8Array(r3.arrayBuffer).slice(0, 4).join(",") ===
+          "137,80,78,71",
+      },
+    },
+    null,
+    2,
+  );
+};
 ```
 
-| # | ‏בדיקה | ‏צפוי |
-|---|------|------|
-| 1 | unit tests (base64) | `node --test …/requesturl-base64.test.js` ‏ירוק |
-| 2 | GET JSON | `t1.status===200`, `t1.hasTag===true` |
-| 3 | POST echo | `t2.status===200`, `t2.echoed==='world'` |
-| 4 | **binary PNG round-trip** | `t3.status===200`, `t3.bytes>0`, `t3.png===true` |
-| 5 | ‏ה-stub ‏נעלם | `grep 'Promise.resolve({})' capacitor-shim.js` ‏על ‏requestUrl → ‏אין |
-| 6 | ‏לא ‏שברנו Filesystem | ‏טעינת vault ‏רגילה עדיין ‏עובדת (workspace ‏נטען, ‏קבצים ‏נקראים) |
-| 7 | walkthrough entry | `docs/walkthrough.md` |
-| 8 | **‏אין commits** | ‏מרדכי ‏ממזג |
+| #   | ‏בדיקה                    | ‏צפוי                                                                 |
+| --- | ------------------------- | --------------------------------------------------------------------- |
+| 1   | unit tests (base64)       | `node --test …/requesturl-base64.test.js` ‏ירוק                       |
+| 2   | GET JSON                  | `t1.status===200`, `t1.hasTag===true`                                 |
+| 3   | POST echo                 | `t2.status===200`, `t2.echoed==='world'`                              |
+| 4   | **binary PNG round-trip** | `t3.status===200`, `t3.bytes>0`, `t3.png===true`                      |
+| 5   | ‏ה-stub ‏נעלם             | `grep 'Promise.resolve({})' capacitor-shim.js` ‏על ‏requestUrl → ‏אין |
+| 6   | ‏לא ‏שברנו Filesystem     | ‏טעינת vault ‏רגילה עדיין ‏עובדת (workspace ‏נטען, ‏קבצים ‏נקראים)    |
+| 7   | walkthrough entry         | `docs/walkthrough.md`                                                 |
+| 8   | **‏אין commits**          | ‏מרדכי ‏ממזג                                                          |
 
 ---
 
 ## §6 — Risks + mitigations
 
-| ‏סיכון | ‏מקור | ‏מיטיגציה |
-|------|------|----------|
-| base64 ‏round-trip ‏שובר ‏בינארי | plan pitfall #2/#4 | reuse ‏ה-chunked helper ‏הקיים; ‏טסט #4 (PNG) + unit על >65KB |
-| `credentials:'include'` ‏שובר wildcard-CORS (GitHub) | **‏אומת ב-runtime** — Obsidian ‏ו-LiveSync ‏שניהם ‏מושכים ‏מ-GitHub ‏ונחסמים | **‏fix: `credentials:'omit'`**. ‏native requestUrl ‏לא ‏שולח cookies; LiveSync→CouchDB ‏אומת ‏כ-basic-auth (‏לא cookies). cookie-session CouchDB (‏edge נדיר) ‏לא ‏נתמך — ‏slice ‏נפרד ‏אם ‏יידרש. |
-| ‏`_changes?feed=continuous` ‏(stream ‏אינסופי) ‏חוסם `arrayBuffer()` | plan pitfall #6 | **‏לא ‏ב-scope ‏של ‏slice ‏זה** — ‏ה-self-test ‏one-shot. ‏אם ‏עולה ‏ב-Slice C → escalation, ‏plan ‏נפרד |
-| ‏שינוי ה-base64 ‏ב-Filesystem ‏שובר ‏קריאת/כתיבת ‏קבצים ‏קיימת | refactor | טסט #6 (vault ‏נטען); ‏ה-helpers ‏זהים ‏פונקציונלית ל-inline |
-| `atob`/`btoa` ‏לא ‏זמינים ‏ב-`node --test` | env | shim ‏בטסט ‏או ‏ייבוא ‏מ-`buffer` |
+| ‏סיכון                                                               | ‏מקור                                                                        | ‏מיטיגציה                                                                                                                                                                                          |
+| -------------------------------------------------------------------- | ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| base64 ‏round-trip ‏שובר ‏בינארי                                     | plan pitfall #2/#4                                                           | reuse ‏ה-chunked helper ‏הקיים; ‏טסט #4 (PNG) + unit על >65KB                                                                                                                                      |
+| `credentials:'include'` ‏שובר wildcard-CORS (GitHub)                 | **‏אומת ב-runtime** — Obsidian ‏ו-LiveSync ‏שניהם ‏מושכים ‏מ-GitHub ‏ונחסמים | **‏fix: `credentials:'omit'`**. ‏native requestUrl ‏לא ‏שולח cookies; LiveSync→CouchDB ‏אומת ‏כ-basic-auth (‏לא cookies). cookie-session CouchDB (‏edge נדיר) ‏לא ‏נתמך — ‏slice ‏נפרד ‏אם ‏יידרש. |
+| ‏`_changes?feed=continuous` ‏(stream ‏אינסופי) ‏חוסם `arrayBuffer()` | plan pitfall #6                                                              | **‏לא ‏ב-scope ‏של ‏slice ‏זה** — ‏ה-self-test ‏one-shot. ‏אם ‏עולה ‏ב-Slice C → escalation, ‏plan ‏נפרד                                                                                           |
+| ‏שינוי ה-base64 ‏ב-Filesystem ‏שובר ‏קריאת/כתיבת ‏קבצים ‏קיימת       | refactor                                                                     | טסט #6 (vault ‏נטען); ‏ה-helpers ‏זהים ‏פונקציונלית ל-inline                                                                                                                                       |
+| `atob`/`btoa` ‏לא ‏זמינים ‏ב-`node --test`                           | env                                                                          | shim ‏בטסט ‏או ‏ייבוא ‏מ-`buffer`                                                                                                                                                                  |
 
 ---
 
@@ -251,16 +278,16 @@ async () => {
 
 ## §8 — Complexity score + verifier tier
 
-| ‏פרמטר | ‏ניקוד |
-|------|------|
-| Protocol contract ‏חדש (requestUrl request/response shape) | +2 |
-| ‏ספרייה DOM/browser (fetch) | +1 |
-| Refactor ‏קל (‏extract base64) | +1 |
-| Pure logic ‏בחלק (base64 helpers) | -2 |
-| TDD ‏על Commit 0 | -1 |
-| ‏בינארי ‏round-trip ‏(‏correctness ‏עדין) | +2 |
-| Greenfield ‏(stub→impl, ‏אין call-sites ‏שלנו ‏לשבור) | -1 |
-| ‏שדרת ‏פלאגינים ‏עתידיים ‏תלויה ‏בזה | +2 |
+| ‏פרמטר                                                     | ‏ניקוד |
+| ---------------------------------------------------------- | ------ |
+| Protocol contract ‏חדש (requestUrl request/response shape) | +2     |
+| ‏ספרייה DOM/browser (fetch)                                | +1     |
+| Refactor ‏קל (‏extract base64)                             | +1     |
+| Pure logic ‏בחלק (base64 helpers)                          | -2     |
+| TDD ‏על Commit 0                                           | -1     |
+| ‏בינארי ‏round-trip ‏(‏correctness ‏עדין)                  | +2     |
+| Greenfield ‏(stub→impl, ‏אין call-sites ‏שלנו ‏לשבור)      | -1     |
+| ‏שדרת ‏פלאגינים ‏עתידיים ‏תלויה ‏בזה                       | +2     |
 
 **Score**: **5 / 10**
 
@@ -270,10 +297,10 @@ async () => {
 
 ## §9 — ‏שאלות פתוחות
 
-| # | ‏שאלה | ‏ברירת מחדל | ‏חוסם? |
-|---|------|----------|------|
-| 1 | ‏ערך ‏ל-`credentials` | **‏הוכרע: `omit`** (‏אומת ‏ב-runtime — basic-auth, ‏ו-`include` ‏שובר GitHub) | ✅ ‏סגור |
-| 2 | ‏האם ‏לחלץ ‏את ה-base64 ‏גם ‏מ-Filesystem ‏או ‏רק ‏להוסיף ‏helpers ‏חדשים | ‏לחלץ (‏DRY) | ❌ |
+| #   | ‏שאלה                                                                     | ‏ברירת מחדל                                                                   | ‏חוסם?   |
+| --- | ------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | -------- |
+| 1   | ‏ערך ‏ל-`credentials`                                                     | **‏הוכרע: `omit`** (‏אומת ‏ב-runtime — basic-auth, ‏ו-`include` ‏שובר GitHub) | ✅ ‏סגור |
+| 2   | ‏האם ‏לחלץ ‏את ה-base64 ‏גם ‏מ-Filesystem ‏או ‏רק ‏להוסיף ‏helpers ‏חדשים | ‏לחלץ (‏DRY)                                                                  | ❌       |
 
 ---
 

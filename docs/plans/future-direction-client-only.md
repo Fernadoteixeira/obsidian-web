@@ -10,6 +10,7 @@
 ## The idea
 
 Right now obsidian-web has a Node.js server that:
+
 - Holds the vault on a real filesystem
 - Serves `/api/fs/*` for read/write
 - Runs chokidar to broadcast external changes via WebSocket
@@ -50,7 +51,7 @@ Browser                              CouchDB (user-controlled)
    plus a CouchDB setup, before they could even read their own notes.
 
 2. **No graceful coexistence.** A "client-only" deployment by definition
-   has no server FS. Users who *want* server-backed vaults (self-hosted,
+   has no server FS. Users who _want_ server-backed vaults (self-hosted,
    on a NAS, shared between desktop runtime and mobile runtime, etc.)
    would lose that option.
 
@@ -71,19 +72,19 @@ Browser                              CouchDB (user-controlled)
 
 The per-vault model (see `local-vaults-implementation.md`) gives us:
 
-| | Per-vault model | Pure client-only |
-|---|---|---|
-| Existing server vaults | Keep working as-is | Need migration |
-| User chooses model | Per-vault opt-in at create time | Forced |
-| Server runtime needed | Yes (for server vaults) | No |
-| CouchDB needed | Optional (for local vaults: yes) | Always |
-| Migration risk | None | High |
-| Implementation effort | ~1 week | ~2–3 weeks |
-| Reversibility | Easy (delete the local vault) | Hard |
+|                        | Per-vault model                  | Pure client-only |
+| ---------------------- | -------------------------------- | ---------------- |
+| Existing server vaults | Keep working as-is               | Need migration   |
+| User chooses model     | Per-vault opt-in at create time  | Forced           |
+| Server runtime needed  | Yes (for server vaults)          | No               |
+| CouchDB needed         | Optional (for local vaults: yes) | Always           |
+| Migration risk         | None                             | High             |
+| Implementation effort  | ~1 week                          | ~2–3 weeks       |
+| Reversibility          | Easy (delete the local vault)    | Hard             |
 
 The per-vault model is **strictly more general**. A deployment that
 configures `SYSTEM_PLUGINS=obsidian-web-layout,obsidian-livesync` and
-restricts the vault registry to local-only effectively *becomes* the
+restricts the vault registry to local-only effectively _becomes_ the
 client-only deployment — without taking that option away from anyone else.
 
 ## When this becomes worth revisiting

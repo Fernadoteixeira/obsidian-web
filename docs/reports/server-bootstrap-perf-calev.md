@@ -48,27 +48,27 @@ findings:
 
 ## TL;DR
 
-| מדד | תוצאה |
-|------|--------|
-| DoD items עוברים | 7/8 (item 3 unverifiable in env) |
-| Regressions | 0 |
-| Bugs חדשים | 2 contract-deviations (minor) + 1 pre-existing (document) |
-| Tests ש-אליעזר הכריז | אומת — 25/25 server, 14/14 mobile |
+| מדד                  | תוצאה                                                     |
+| -------------------- | --------------------------------------------------------- |
+| DoD items עוברים     | 7/8 (item 3 unverifiable in env)                          |
+| Regressions          | 0                                                         |
+| Bugs חדשים           | 2 contract-deviations (minor) + 1 pre-existing (document) |
+| Tests ש-אליעזר הכריז | אומת — 25/25 server, 14/14 mobile                         |
 
 הליבה של הסליס עובדת היטב: write/update/unlink/trash/rmdir/rename/incremental כולם פונקציונליים, ה-cache לא נמחק בכל כתיבה (ה-bug המקורי שהסליס בא לתקן), ושני נתיבי-המחיקה (fs + electron/trash) שניהם surgical. נמצאו שני סטיות-contract קטנות מול full re-scan (rename ללא content; dir-mtime stale ב-parent listing) — לא שוברות שימוש (on-demand read עדיין מחזיר נכון) אבל מפֵרות את הדרישה "byte-for-byte identical to full" מ-§6/DoD#7.
 
 ## טבלת DoD items
 
-| # | Item מה-brief | סטטוס | עדות |
-|---|---------------|--------|------|
-| 1 | כל server tests ירוקים | ✅ | `npm test` → 25/25 pass, 0 fail |
-| 2 | mobile unit tests לא נשברו | ✅ | `node --test "src/client-mobile/test/*.test.js"` → 14/14 (חיים ב-main; ה-worktree נוצר מ-HEAD נקי לפני ה-WIP, כמתועד ב-brief §0) |
-| 3 | Cold bootstrap מהיר יותר | ⓘ לא ניתן לאימות | אין root → אי-אפשר `drop_caches`; VFS חם. Warm: pool=4→1094ms, pool=64→1151ms (אין שיפור כשחם, כצפוי). אימתתי שה-knob מגיע ל-libuv (`UV_THREADPOOL_SIZE env = 64` אחרי require). טענת 37s→2s על VFS קר נשענת על מדידת אליעזר — לא שחזרתי. |
-| 4 | שמירה לא מוחקת cache | ✅ | PUT write→ bootstrap הבא `cache HIT (0ms)`, לא MISS |
-| 5 | עדכון מדויק | ✅ | write 'UPDATED CONTENT v2' → bootstrap מחזיר בדיוק את התוכן החדש, size=18 |
-| 6 | מחיקה מדויקת — שני הנתיבים | ✅ | (א) DELETE /unlink → sub.md נעלם מ-fs+dirs[notes], HIT נשמר. (ב) POST /electron/trash → trashme.md נעלם, HIT נשמר. שאר ה-vault שלם בשניהם |
-| 7 | Incremental מול full | ⚠️ | לוג: `cache MISS (1 dirs changed): notes` → `incremental rebuild (1 dirs)` (לא full) ✅; אבל ה-payload **לא** זהה ל-full re-scan — diff יחיד: dir-mtime של notes ב-dirs[""] (ראה NBug2) |
-| 8 | HIT נקי נשאר מהיר | ✅ | fixture: 1-2ms; rclone (vault רשום): `cache HIT (4ms)`, ~37ms round-trip |
+| #   | Item מה-brief              | סטטוס            | עדות                                                                                                                                                                                                                                      |
+| --- | -------------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | כל server tests ירוקים     | ✅               | `npm test` → 25/25 pass, 0 fail                                                                                                                                                                                                           |
+| 2   | mobile unit tests לא נשברו | ✅               | `node --test "src/client-mobile/test/*.test.js"` → 14/14 (חיים ב-main; ה-worktree נוצר מ-HEAD נקי לפני ה-WIP, כמתועד ב-brief §0)                                                                                                          |
+| 3   | Cold bootstrap מהיר יותר   | ⓘ לא ניתן לאימות | אין root → אי-אפשר `drop_caches`; VFS חם. Warm: pool=4→1094ms, pool=64→1151ms (אין שיפור כשחם, כצפוי). אימתתי שה-knob מגיע ל-libuv (`UV_THREADPOOL_SIZE env = 64` אחרי require). טענת 37s→2s על VFS קר נשענת על מדידת אליעזר — לא שחזרתי. |
+| 4   | שמירה לא מוחקת cache       | ✅               | PUT write→ bootstrap הבא `cache HIT (0ms)`, לא MISS                                                                                                                                                                                       |
+| 5   | עדכון מדויק                | ✅               | write 'UPDATED CONTENT v2' → bootstrap מחזיר בדיוק את התוכן החדש, size=18                                                                                                                                                                 |
+| 6   | מחיקה מדויקת — שני הנתיבים | ✅               | (א) DELETE /unlink → sub.md נעלם מ-fs+dirs[notes], HIT נשמר. (ב) POST /electron/trash → trashme.md נעלם, HIT נשמר. שאר ה-vault שלם בשניהם                                                                                                 |
+| 7   | Incremental מול full       | ⚠️               | לוג: `cache MISS (1 dirs changed): notes` → `incremental rebuild (1 dirs)` (לא full) ✅; אבל ה-payload **לא** זהה ל-full re-scan — diff יחיד: dir-mtime של notes ב-dirs[""] (ראה NBug2)                                                   |
+| 8   | HIT נקי נשאר מהיר          | ✅               | fixture: 1-2ms; rclone (vault רשום): `cache HIT (4ms)`, ~37ms round-trip                                                                                                                                                                  |
 
 ## Flows שעבדו מקצה לקצה
 
@@ -107,17 +107,18 @@ findings:
 
 ## סיווג ל-patterns.md
 
-| באג | קטגוריה | הערה |
-|------|----------|------|
-| NBug1 (rename ללא content) | קטגוריה 1 (TDD ירוק ≠ התנהגות נכונה) + spec-drift | `updateEntryFile` unit-tests ירוקים על ה-contract הפנימי; אף טסט לא מפעיל את rename דרך ה-flow המלא ומשווה ל-full re-scan. ה-brief עצמו לא ציין content ל-new path. |
-| NBug2 (dir-mtime stale) | קטגוריה 1 + spec-drift | unit-tests של invalidate ירוקים; integration test של incremental משווה fs/dirs אבל לא תפס את ה-parent-listing dir-mtime. הדרישה "byte-for-byte identical" לא נאכפה בטסט. |
-| NBug3 (fallback uncached) | unique (pre-existing) | מחוץ ל-scope; לתיעוד בלבד. |
+| באג                        | קטגוריה                                           | הערה                                                                                                                                                                     |
+| -------------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| NBug1 (rename ללא content) | קטגוריה 1 (TDD ירוק ≠ התנהגות נכונה) + spec-drift | `updateEntryFile` unit-tests ירוקים על ה-contract הפנימי; אף טסט לא מפעיל את rename דרך ה-flow המלא ומשווה ל-full re-scan. ה-brief עצמו לא ציין content ל-new path.      |
+| NBug2 (dir-mtime stale)    | קטגוריה 1 + spec-drift                            | unit-tests של invalidate ירוקים; integration test של incremental משווה fs/dirs אבל לא תפס את ה-parent-listing dir-mtime. הדרישה "byte-for-byte identical" לא נאכפה בטסט. |
+| NBug3 (fallback uncached)  | unique (pre-existing)                             | מחוץ ל-scope; לתיעוד בלבד.                                                                                                                                               |
 
 ## סיכום לסוכן הבא (אליעזר של ה-fix)
 
 הסליס **פונקציונלי ובטוח למיזוג מבחינת התנהגות-משתמש** — אין flow שבור, אין regression, ה-bug המקורי (cache wipe בכל write) תוקן ושני נתיבי-המחיקה מטופלים. הפער היחיד מ-GO מלא הוא שתי סטיות-contract מ-full re-scan שמפֵרות את הדרישה המפורשת "byte-for-byte identical" אך לא שוברות שימוש בפועל.
 
 עדיפות לתיקון:
+
 1. **NBug1 (rename content)** — הכי משמעותי: stat שגוי (size=0/mtime=0) על קובץ אחרי rename יכול לבלבל את ה-metadata index של Obsidian. תיקון: ב-`/rename` להעביר content/size/mtime ל-new path (קריאת stat+read של newPath אחרי ה-rename), או ל-fall-back ל-`removeEntryPath(old)` + re-stat של new מהדיסק.
 2. **NBug2 (dir-mtime)** — לעדכן את ה-entry של ה-dir שהשתנה בתוך `dirs[parent]` (וב-Phase2 גם את `fs[parent]`) בכל add/remove. נמוך-impact אך נדרש ל-"identical to full".
 3. **NBug3** — לתעד או לתקן בנפרד; לא חוסם את הסליס.

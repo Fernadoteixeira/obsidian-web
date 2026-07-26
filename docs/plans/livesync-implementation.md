@@ -8,6 +8,7 @@
 ## Context
 
 The previous two plans (now in `docs/plans/archive/`) gave us:
+
 - A mobile runtime (`/mobile`) with CapacitorAdapter
 - System plugin injection from `<repo>/plugins/`
 - A working layout-switcher plugin
@@ -20,6 +21,7 @@ direct fetch + CORS"** — do not deviate without re-reading that section
 and discussing with the user.
 
 **TL;DR strategy:**
+
 - LiveSync calls Obsidian's `requestUrl()` API.
 - We implement `App.requestUrl` in `client-mobile/shims/capacitor-shim.js`
   as a plain `fetch()` wrapper.
@@ -28,20 +30,21 @@ and discussing with the user.
 
 ## What already exists (do not redo)
 
-| Component | Status |
-|---|---|
-| Mobile runtime (`/mobile`) | ✅ done |
-| `CapacitorAdapter` via shim | ✅ done |
-| System plugin overlay | ✅ done (uses `<repo>/plugins/` directory) |
-| Layout-switcher plugin (`obsidian-web-layout`) | ✅ done |
-| `crypto.createHash` async path in `client-mobile/boot.js` | ✅ done — works for SHA-1/256/512 via `subtle.digest` |
-| `App.requestUrl` in `capacitor-shim.js` | ❌ stubbed (`() => Promise.resolve({})`) — this is what we implement |
-| LiveSync plugin in `<repo>/plugins/obsidian-livesync/` | ❌ not yet present |
-| `SYSTEM_PLUGINS` env var | ❌ documented in PLAN.md but not implemented |
+| Component                                                 | Status                                                               |
+| --------------------------------------------------------- | -------------------------------------------------------------------- |
+| Mobile runtime (`/mobile`)                                | ✅ done                                                              |
+| `CapacitorAdapter` via shim                               | ✅ done                                                              |
+| System plugin overlay                                     | ✅ done (uses `<repo>/plugins/` directory)                           |
+| Layout-switcher plugin (`obsidian-web-layout`)            | ✅ done                                                              |
+| `crypto.createHash` async path in `client-mobile/boot.js` | ✅ done — works for SHA-1/256/512 via `subtle.digest`                |
+| `App.requestUrl` in `capacitor-shim.js`                   | ❌ stubbed (`() => Promise.resolve({})`) — this is what we implement |
+| LiveSync plugin in `<repo>/plugins/obsidian-livesync/`    | ❌ not yet present                                                   |
+| `SYSTEM_PLUGINS` env var                                  | ❌ documented in PLAN.md but not implemented                         |
 
 ## Goal
 
 When the user opens any vault on obsidian-web at `/mobile`:
+
 1. LiveSync appears in the plugins list automatically (via system overlay).
 2. They configure CouchDB URI + auth in the LiveSync settings tab.
 3. Initial replication completes against their CouchDB.
@@ -101,12 +104,18 @@ builds the final response object:
 ```js
 function fb(e, status, headers, arrayBuffer) {
   if ((e.throw ?? true) && status >= 400) {
-    throw new pb('Request failed, status ' + status, status, headers);
+    throw new pb("Request failed, status " + status, status, headers);
   }
   return {
-    status, headers, arrayBuffer,
-    get json() { return JSON.parse(new TextDecoder().decode(arrayBuffer)); },
-    get text() { return new TextDecoder().decode(arrayBuffer); },
+    status,
+    headers,
+    arrayBuffer,
+    get json() {
+      return JSON.parse(new TextDecoder().decode(arrayBuffer));
+    },
+    get text() {
+      return new TextDecoder().decode(arrayBuffer);
+    },
   };
 }
 ```
@@ -115,16 +124,21 @@ function fb(e, status, headers, arrayBuffer) {
 
 ```js
 // $: ArrayBuffer/Uint8Array → base64 string (uses btoa)
-function $(e) { return Z(new Uint8Array(e)); }
+function $(e) {
+  return Z(new Uint8Array(e));
+}
 function Z(e) {
-  for (var t=[], n=e.byteLength, i=0; i<n; i++) t.push(String.fromCharCode(e[i]));
-  return window.btoa(t.join(''));
+  for (var t = [], n = e.byteLength, i = 0; i < n; i++)
+    t.push(String.fromCharCode(e[i]));
+  return window.btoa(t.join(""));
 }
 
 // X: base64 string → ArrayBuffer
 function X(e) {
-  var t = window.atob(e), n = t.length, i = new Uint8Array(n);
-  for (var r=0; r<n; r++) i[r] = t.charCodeAt(r);
+  var t = window.atob(e),
+    n = t.length,
+    i = new Uint8Array(n);
+  for (var r = 0; r < n; r++) i[r] = t.charCodeAt(r);
   return i.buffer;
 }
 ```
@@ -225,8 +239,8 @@ wait for workspace, then run:
 async () => {
   // Test 1: simple JSON GET
   const r1 = await window.app.requestUrl({
-    url: 'https://api.github.com/repos/obsidianmd/obsidian-releases/releases/latest',
-    method: 'GET',
+    url: "https://api.github.com/repos/obsidianmd/obsidian-releases/releases/latest",
+    method: "GET",
   });
   const result1 = {
     status: r1.status,
@@ -236,10 +250,10 @@ async () => {
 
   // Test 2: POST with JSON body (use httpbin)
   const r2 = await window.app.requestUrl({
-    url: 'https://httpbin.org/post',
-    method: 'POST',
-    contentType: 'application/json',
-    body: JSON.stringify({ hello: 'world' }),
+    url: "https://httpbin.org/post",
+    method: "POST",
+    contentType: "application/json",
+    body: JSON.stringify({ hello: "world" }),
   });
   const result2 = {
     status: r2.status,
@@ -248,20 +262,26 @@ async () => {
 
   // Test 3: binary GET (small PNG)
   const r3 = await window.app.requestUrl({
-    url: 'https://httpbin.org/image/png',
-    method: 'GET',
+    url: "https://httpbin.org/image/png",
+    method: "GET",
   });
   const result3 = {
     status: r3.status,
     byteLength: r3.arrayBuffer.byteLength,
-    looksLikePng: new Uint8Array(r3.arrayBuffer).slice(0, 4).join(',') === '137,80,78,71',
+    looksLikePng:
+      new Uint8Array(r3.arrayBuffer).slice(0, 4).join(",") === "137,80,78,71",
   };
 
-  return JSON.stringify({ test1: result1, test2: result2, test3: result3 }, null, 2);
-}
+  return JSON.stringify(
+    { test1: result1, test2: result2, test3: result3 },
+    null,
+    2,
+  );
+};
 ```
 
 **Expected results:**
+
 - `test1.status === 200`, `test1.tagName === 'v1.12.7'` (or whatever is current)
 - `test2.status === 200`, `test2.echoedBody.hello === 'world'`
 - `test3.status === 200`, `test3.byteLength > 0`, `test3.looksLikePng === true`
@@ -275,6 +295,7 @@ will break too.
 Create a script: `scripts/install-livesync.js`
 
 This script:
+
 1. Fetches the latest `obsidian-livesync` release metadata from GitHub
    (`https://api.github.com/repos/vrtmrz/obsidian-livesync/releases/latest`).
 2. Downloads `main.js`, `manifest.json`, and `styles.css` (if present)
@@ -286,8 +307,10 @@ Same error handling: validate the response, check file presence, fail
 loud if assets aren't found.
 
 Manifest tweaks (write this AFTER downloading, modify in place):
+
 - Read the downloaded `manifest.json`.
 - Add `data.json` next to it with these defaults:
+
   ```json
   {
     "version": "<copied from manifest>",
@@ -295,10 +318,12 @@ Manifest tweaks (write this AFTER downloading, modify in place):
     "_obsidian_web_note": "Configure your CouchDB URI in the LiveSync settings tab."
   }
   ```
+
   (LiveSync reads `data.json` for its settings; an empty/minimal one is fine —
   the plugin shows the settings UI on first load anyway.)
 
 CLI:
+
 ```bash
 node scripts/install-livesync.js              # latest
 node scripts/install-livesync.js --version 0.25.60
@@ -306,6 +331,7 @@ node scripts/install-livesync.js --force      # re-download even if cached
 ```
 
 Verification:
+
 ```bash
 ls plugins/obsidian-livesync/
 # Should show: manifest.json, main.js, [styles.css], data.json
@@ -319,6 +345,7 @@ it up the next time you load a vault — no other config needed.
 We need a real CouchDB to test against. Options (pick whichever is easiest):
 
 **Option A: Local Docker** (recommended for testing):
+
 ```bash
 docker run -d --name couchdb-test \
   -p 5984:5984 \
@@ -375,6 +402,7 @@ CouchDB config.
 
 If step 7 or 9 doesn't propagate within ~10 seconds, check the LiveSync
 status bar for errors. Common issues:
+
 - `_changes` feed connection drops (browser killed long-poll, or CORS
   blocks streaming) — needs investigation.
 - Conflicts (LiveSync handles automatically but logs to console).
@@ -384,6 +412,7 @@ status bar for errors. Common issues:
 **`docs/livesync.md`** (new file, top-level in `docs/`):
 
 User-facing guide. Cover:
+
 - Prerequisites (CouchDB instance with CORS, LiveSync setup elsewhere)
 - The plugin appears automatically — no install step
 - How to configure: settings tab walkthrough
@@ -392,11 +421,13 @@ User-facing guide. Cover:
 
 **`docs/walkthrough.md`** entry — new dated section at the top,
 following the existing pattern. Include:
+
 - What was done (this plan, in summary)
 - Architecture decisions made along the way (any deviations from the plan)
 - Verification results
 
 **`PLAN.md`** updates:
+
 - In the LiveSync section, remove the "Direct-fetch implementation
   checklist" (it's done — replaced by this plan).
 - Mark the LiveSync integration as Phase 1 / done.
@@ -501,12 +532,12 @@ The plan is complete when **all** of the following are true:
 
 In `obsidian-mobile/app.js`:
 
-| Item | Offset |
-|---|---|
+| Item                             | Offset   |
+| -------------------------------- | -------- |
 | `requestUrl()` plugin API caller | ~1084715 |
-| `fb()` response normalizer | ~1084206 |
-| `$()` ArrayBuffer → base64 | ~267137 |
-| `X()` base64 → ArrayBuffer | ~267042 |
+| `fb()` response normalizer       | ~1084206 |
+| `$()` ArrayBuffer → base64       | ~267137  |
+| `X()` base64 → ArrayBuffer       | ~267042  |
 
 These offsets will drift between versions. Reference only — the regex
 patterns are the source of truth, but for this plan we don't patch the
@@ -514,11 +545,11 @@ bundle (we implement entirely in the shim).
 
 In `client-mobile/shims/capacitor-shim.js`:
 
-| Item | Approx. line |
-|---|---|
-| `const App = { ... }` | ~396 |
-| `requestUrl:` stub to replace | ~408 |
-| `PluginHeaders` declaration | ~592 |
+| Item                          | Approx. line |
+| ----------------------------- | ------------ |
+| `const App = { ... }`         | ~396         |
+| `requestUrl:` stub to replace | ~408         |
+| `PluginHeaders` declaration   | ~592         |
 
 In `PluginHeaders`, `App.requestUrl` is already declared as
 `rtype: 'promise'`. Do not change.
@@ -540,11 +571,13 @@ For screenshots: save to `~/<name>.png`, then `scp` to `/tmp/`
 and Read.
 
 If `obsmobile` session is gone:
+
 ```bash
 ssh gui-host "$PW && playwright-cli --s=obsmobile attach --cdp http://localhost:9224"
 ```
 
 If Chrome on 9224 is gone:
+
 ```bash
 ssh gui-host "DISPLAY=:10 ~/Documents/scripts/pw-clean.sh \
   'http://localhost:3000/mobile?vault=5b68fb93d875ad63' \

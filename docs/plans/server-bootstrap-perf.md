@@ -52,12 +52,14 @@ npm install
 ### Reading list
 
 **must-read**:
+
 - `src/server/api/bootstrap.js` ‏— ‏כל הקובץ. ‏לב ה-slice.
 - `src/server/api/fs.js` ‏שורות 23-29 (‏`invalidateBootstrapCache`) ‏ו-403-500 (mutation routes).
 - `src/server/api/electron.js` ‏שורות 14-20 (‏עותק שני ‏של `invalidateBootstrapCache`) ‏ו-52-74 (‏route `/trash` — **‏נתיב-מחיקה שני** ‏שעוקף ‏את `/api/fs`).
 - `src/server/index.js` ‏שורות 1-40 ‏ו-159-165 (warm-up).
 
 **reference**:
+
 - `src/server/config.js` ‏— ‏בלוק `bootstrap` ‏ו-`watchPolling`.
 - `docs/plans/mobile-bootstrap-cache.md` ‏— ‏רקע על ה-cache (‏slice סמוך).
 
@@ -77,16 +79,16 @@ npm install
 
 ## §2 — Scope
 
-| ‏פיצ'ר | ‏כן/לא | ‏לאן |
-|------|------|------|
-| `UV_THREADPOOL_SIZE` ‏knob + ברירת-מחדל מוגדלת | ✅ | Phase 1 |
-| Surgical invalidation ‏ב-`fs.js` (7 call-sites) | ✅ | Phase 2 |
-| Surgical invalidation ‏ב-`electron.js` `/trash` (call-site ‏8) | ✅ | Phase 2 |
-| Incremental rebuild ל-`changedDirs` (‏במקום full re-scan) | ✅ | Phase 3 |
-| ‏שינוי פורמט ה-payload (`fs`/`dirs`/`electron`) | ❌ | ‏אסור — ‏הצרכן לא משתנה |
-| rclone VFS tuning (`--vfs-cache-mode` ‏וכו') | ❌ | host-managed (Proxmox), ‏מחוץ לריפו |
-| ‏שינוי בצד-לקוח (desktop/mobile shims) | ❌ | ‏לא ב-slice הזה |
-| ‏watcher-driven invalidation (chokidar → cache) | ❌ | ‏לא נדרש (‏ראה הערה למטה) |
+| ‏פיצ'ר                                                         | ‏כן/לא | ‏לאן                                |
+| -------------------------------------------------------------- | ------ | ----------------------------------- |
+| `UV_THREADPOOL_SIZE` ‏knob + ברירת-מחדל מוגדלת                 | ✅     | Phase 1                             |
+| Surgical invalidation ‏ב-`fs.js` (7 call-sites)                | ✅     | Phase 2                             |
+| Surgical invalidation ‏ב-`electron.js` `/trash` (call-site ‏8) | ✅     | Phase 2                             |
+| Incremental rebuild ל-`changedDirs` (‏במקום full re-scan)      | ✅     | Phase 3                             |
+| ‏שינוי פורמט ה-payload (`fs`/`dirs`/`electron`)                | ❌     | ‏אסור — ‏הצרכן לא משתנה             |
+| rclone VFS tuning (`--vfs-cache-mode` ‏וכו')                   | ❌     | host-managed (Proxmox), ‏מחוץ לריפו |
+| ‏שינוי בצד-לקוח (desktop/mobile shims)                         | ❌     | ‏לא ב-slice הזה                     |
+| ‏watcher-driven invalidation (chokidar → cache)                | ❌     | ‏לא נדרש (‏ראה הערה למטה)           |
 
 > ‏עקרון: ‏הצרכן (‏ה-shims) ‏מקבל בדיוק אותו JSON. ‏זה slice ‏של **‏ביצועי-build**,
 > ‏לא ‏שינוי-contract.
@@ -133,27 +135,33 @@ npm install
 ### Commit 0 — `UV_THREADPOOL_SIZE` knob (approach: **manual**)
 
 **‏קבצים שמשתנים**:
+
 - `src/server/index.js` — ‏בראש הקובץ **‏לפני כל `require`** ‏שנוגע ב-FS
   (‏לפני `require('express')` ‏בשורה ~11), ‏הוסף:
+
   ```js
   // libuv runs all fs.* ops on a thread pool (default 4). On high-latency
   // mounts (rclone/Drive/NFS) the bootstrap walk is latency-bound, so a wider
   // pool hides that latency. Cold full bootstrap on a Drive-backed vault drops
   // from ~37s to ~2s. Override with UV_THREADPOOL_SIZE; we default it higher.
   if (!process.env.UV_THREADPOOL_SIZE) {
-    process.env.UV_THREADPOOL_SIZE = String(require('./config').threadPoolSize);
+    process.env.UV_THREADPOOL_SIZE = String(require("./config").threadPoolSize);
   }
   ```
+
   > ⚠️ ‏חובה שזה יקרה **‏לפני** ‏ש-libuv מאתחל את ה-pool (‏כלומר לפני פעולת FS
   > ‏ראשונה). ‏בראש index.js, ‏לפני requires אחרים, ‏זה בטוח. ‏הערך לא משפיע
   > ‏אם נקבע אחרי שה-pool כבר אותחל.
+
 - `src/server/config.js` — ‏הוסף ל-export:
+
   ```js
   // libuv thread-pool size. Higher helps latency-bound FS (rclone/NFS).
   threadPoolSize: parseInt(process.env.UV_THREADPOOL_SIZE || '64', 10),
   ```
 
 **Verification** (manual):
+
 ```bash
 cd src/server
 # ‏מדידת before: ‏שמור את הערך הנוכחי, ‏הרץ עם pool=4 ‏וזמן את ה-bootstrap הקר.
@@ -172,10 +180,12 @@ time curl -s 'http://127.0.0.1:3000/api/bootstrap?vault=009428c4bd1ac698&full=1'
 ‏נחליף ב-invalidation ‏ברמת-רשומה.
 
 **‏קבצים חדשים**:
+
 - `src/server/api/bootstrap-invalidate.js` — ‏לוגיקה טהורה, ‏ניתנת ל-unit-test
   ‏בלי express/FS. ‏פועלת על אובייקט `entry` ‏(`{ response, dirMtimes, compressed }`).
 
 **API skeleton**:
+
 ```js
 // bootstrap-invalidate.js — pure functions over a cache entry.
 //
@@ -193,14 +203,17 @@ module.exports = { updateEntryFile, removeEntryPath };
 ```
 
 **‏קבצים שמשתנים**:
+
 - `src/server/api/bootstrap.js` — ‏הוסף ‏export ‏של ‏פונקציה ‏בשם **`invalidateEntry`**
   (‏שם ‏אחיד — ‏לא `invalidateBootstrapEntry`) `invalidateEntry(vaultId, relPath, { removed, content, size, mtime })`
   ‏שמושכת את ה-entry מ-`serverCache`, ‏קוראת ל-`updateEntryFile`/`removeEntryPath`,
   ‏ו**‏מקמפרסת מחדש debounced** (‏ראה risk #4). ‏אם אין entry ל-vault → no-op (‏ה-warm-up יבנה).
+
   ```js
   // exported alongside serverCache / warmUpBootstrapCache
-  module.exports.invalidateEntry = invalidateEntry;   // (vaultId, relPath, {removed,content,size,mtime}) => void
+  module.exports.invalidateEntry = invalidateEntry; // (vaultId, relPath, {removed,content,size,mtime}) => void
   ```
+
 - `src/server/api/fs.js` — ‏שנה את `invalidateBootstrapCache` ‏שתקרא ל-
   `bootstrap.invalidateEntry(vaultId, relPath, opts)` ‏במקום `serverCache.delete`.
   ‏7 ‏ה-call-sites (‏שורות 429, 436, 448, 459, 475, 487, 499) ‏כבר יושבים ליד
@@ -235,6 +248,7 @@ module.exports = { updateEntryFile, removeEntryPath };
   > ‏מקבל `content/size/mtime` ‏אופציונלית.
 
 **Verification** (tdd — ‏טסטים ‏ראשונים):
+
 ```bash
 cd src/server && node --test test/bootstrap-invalidate.test.js
 # ‏מקרים: update קובץ קיים (‏content משתנה), ‏הוספת קובץ חדש (‏מופיע ב-dirs[parent]),
@@ -256,6 +270,7 @@ node --test test/  # ‏כל ה-server tests ‏עדיין ירוקים (‏כו
 ‏כש-`cached` ‏קיים ‏ו-`changedDirs.length > 0` — ‏לבנות ‏מחדש ‏רק ‏את ‏אותן ‏תיקיות.
 
 **‏קבצים שמשתנים**:
+
 - `src/server/api/bootstrap.js`, `_buildCacheEntry`:
   - ‏הוסף ענף: ‏אם `cached && changedDirs.length > 0 && cached.isFull === full`:
     - ‏התחל מ-`structuredClone(cached.response)` (‏או deep-copy ‏של `fs`/`dirs`).
@@ -274,6 +289,7 @@ node --test test/  # ‏כל ה-server tests ‏עדיין ירוקים (‏כו
 > ‏שלא עבר דרך `/api/fs`. ‏זה גם ‏מתקן את ‏ה-stale-on-external-edit.
 
 **Verification** (integration):
+
 ```bash
 cd src/server && node --test test/bootstrap-incremental.test.js
 # ‏fixture: ‏תיקיית tmp ‏אמיתית. ‏build מלא → ‏הוסף/מחק/שנה-שם קובץ →
@@ -286,32 +302,32 @@ node --test test/
 
 ## §5 — DoD verifiable
 
-| # | ‏בדיקה | ‏איך |
-|---|------|------|
-| 1 | ‏כל ה-server tests ‏ירוקים | `cd src/server && npm install && node --test test/` |
-| 2 | mobile unit tests ‏לא נשברו | `node --test src/client-mobile/test/` ‏(14 ‏ירוקים) |
-| 3 | **Cold bootstrap ‏מהיר יותר** | ‏הפל VFS (`echo 3 > /proc/sys/vm/drop_caches` ‏אם זמין, ‏או ‏המתן/restart rclone — ‏תעד מה עשית), ‏מדוד `time curl '…/api/bootstrap?vault=009428c4bd1ac698&full=1'` ‏עם pool=4 ‏מול pool=64. ‏יעד: ‏שיפור ‏ניכר (‏פי-כמה). ‏**‏תעד מצב VFS**. |
-| 4 | **‏שמירה ‏לא מוחקת cache** | ‏אחרי `PUT /api/fs/write?vault=…` ‏על קובץ אחד, ‏ה-bootstrap הבא הוא **HIT** (‏לוג `cache HIT`), ‏לא MISS/full. |
-| 5 | **‏עדכון מדויק** | ‏כתוב תוכן חדש לקובץ קיים → ‏ה-bootstrap הבא מחזיר את ‏ה-content ‏החדש (‏לא ישן). |
-| 6 | **‏מחיקה מדויקת — ‏שני הנתיבים** | (‏א) `DELETE /api/fs/unlink` ‏ו-(‏ב) `POST /api/electron/trash` → ‏בשני המקרים ‏הקובץ ‏נעלם מ-`fs` ‏ומ-`dirs[parent]` ‏ב-bootstrap הבא, ‏וה-bootstrap ‏נשאר HIT (‏לא ‏full re-scan); ‏שאר ה-vault ‏שלם. |
-| 7 | **Incremental ‏מול full** | ‏שינוי חיצוני בקובץ אחד → ‏לוג מראה `incremental (1 dir)` ‏ולא full; ‏ה-payload ‏זהה ל-full re-scan ‏על אותו מצב. |
-| 8 | ‏HIT נקי ‏נשאר ‏מהיר | ‏bootstrap ‏שני ‏ברצף (‏בלי שינוי) = `cache HIT (<… ms)`, ‏תת-שנייה. |
-| 9 | README ‏מתעד `UV_THREADPOOL_SIZE` | ‏סעיף env vars. |
-| 10 | walkthrough entry ‏מתוארך | `docs/walkthrough.md`. |
-| 11 | **‏אין commits** | ‏השאר ל-merge ‏של מרדכי. |
+| #   | ‏בדיקה                            | ‏איך                                                                                                                                                                                                                                          |
+| --- | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | ‏כל ה-server tests ‏ירוקים        | `cd src/server && npm install && node --test test/`                                                                                                                                                                                           |
+| 2   | mobile unit tests ‏לא נשברו       | `node --test src/client-mobile/test/` ‏(14 ‏ירוקים)                                                                                                                                                                                           |
+| 3   | **Cold bootstrap ‏מהיר יותר**     | ‏הפל VFS (`echo 3 > /proc/sys/vm/drop_caches` ‏אם זמין, ‏או ‏המתן/restart rclone — ‏תעד מה עשית), ‏מדוד `time curl '…/api/bootstrap?vault=009428c4bd1ac698&full=1'` ‏עם pool=4 ‏מול pool=64. ‏יעד: ‏שיפור ‏ניכר (‏פי-כמה). ‏**‏תעד מצב VFS**. |
+| 4   | **‏שמירה ‏לא מוחקת cache**        | ‏אחרי `PUT /api/fs/write?vault=…` ‏על קובץ אחד, ‏ה-bootstrap הבא הוא **HIT** (‏לוג `cache HIT`), ‏לא MISS/full.                                                                                                                               |
+| 5   | **‏עדכון מדויק**                  | ‏כתוב תוכן חדש לקובץ קיים → ‏ה-bootstrap הבא מחזיר את ‏ה-content ‏החדש (‏לא ישן).                                                                                                                                                             |
+| 6   | **‏מחיקה מדויקת — ‏שני הנתיבים**  | (‏א) `DELETE /api/fs/unlink` ‏ו-(‏ב) `POST /api/electron/trash` → ‏בשני המקרים ‏הקובץ ‏נעלם מ-`fs` ‏ומ-`dirs[parent]` ‏ב-bootstrap הבא, ‏וה-bootstrap ‏נשאר HIT (‏לא ‏full re-scan); ‏שאר ה-vault ‏שלם.                                       |
+| 7   | **Incremental ‏מול full**         | ‏שינוי חיצוני בקובץ אחד → ‏לוג מראה `incremental (1 dir)` ‏ולא full; ‏ה-payload ‏זהה ל-full re-scan ‏על אותו מצב.                                                                                                                             |
+| 8   | ‏HIT נקי ‏נשאר ‏מהיר              | ‏bootstrap ‏שני ‏ברצף (‏בלי שינוי) = `cache HIT (<… ms)`, ‏תת-שנייה.                                                                                                                                                                          |
+| 9   | README ‏מתעד `UV_THREADPOOL_SIZE` | ‏סעיף env vars.                                                                                                                                                                                                                               |
+| 10  | walkthrough entry ‏מתוארך         | `docs/walkthrough.md`.                                                                                                                                                                                                                        |
+| 11  | **‏אין commits**                  | ‏השאר ל-merge ‏של מרדכי.                                                                                                                                                                                                                      |
 
 ---
 
 ## §6 — Risks + mitigations
 
-| ‏סיכון | ‏מקור | ‏מיטיגציה |
-|------|------|----------|
-| `UV_THREADPOOL_SIZE` ‏נקבע ‏אחרי אתחול ה-pool → ‏לא משפיע | libuv ‏מאתחל ‏ב-FS ‏ראשון | ‏לקבוע ‏בראש index.js ‏לפני ‏כל require ‏שנוגע ב-FS. ‏אמת ב-`require('worker_threads')`-‏בדיקה ‏או ‏מדידת before/after. |
-| relPath ‏לא תואם ‏למפתחות ה-cache (sep/encoding) | `walkDir:219` ‏משתמש ב-`split(sep).join('/')` | ‏השתמש ‏באותו helper ‏בדיוק; ‏טסט #5/#6 ‏יתפסו mismatch. |
-| prune ‏של תת-עץ ‏מפספס/‏מוחק יותר מדי | recursion | ‏prune ‏לפי prefix `relDir + '/'` ‏בדיוק; ‏טסט ‏ייעודי למחיקת תיקייה ‏עם ‏ילדים. |
-| race: invalidation ‏בזמן `pendingBuilds` ‏פעיל | build ‏רץ ברקע (‏שורה 506) | ‏**‏ממצא אביגיל #6**: `pendingBuilds` ‏ממופתח ב-`vaultId+':full'`/`+':partial'` (‏שורה 276), ‏לא ב-vaultId ‏חשוף. ‏הבדיקה ‏חייבת ‏להיות `[...pendingBuilds.keys()].some(k => k.startsWith(vaultId + ':'))` — ‏ואם ‏true, ‏ליפול ל-`serverCache.delete` (‏ההתנהגות הישנה). `pendingBuilds.has(vaultId)` ‏תמיד ‏false → ‏no-op ‏שקט. |
-| re-compress ‏על כל כתיבה ‏בודדת ‏= CPU | ‏Obsidian ‏שומר ‏בתכיפות | **debounce** ‏את ה-recompress (‏~250ms) ‏— ‏עדכן את `response` ‏מיד, ‏דחה ‏רק את ‏יצירת ה-`compressed` Buffers. ‏HIT ‏שמגיע ‏לפני recompress ‏משתמש ב-buffer ‏הקודם ‏או ‏בונה ad-hoc. |
-| `structuredClone` ‏על fs גדול ‏יקר | Phase 3 | ‏clone ‏רק את ה-sub-objects שמשתנים, ‏או mutate-in-place ‏על ה-entry ‏הקיים (‏ה-entry ‏ ‏ ‏ ‏לא ‏משותף ‏מחוץ ל-serverCache). |
+| ‏סיכון                                                    | ‏מקור                                         | ‏מיטיגציה                                                                                                                                                                                                                                                                                                                          |
+| --------------------------------------------------------- | --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `UV_THREADPOOL_SIZE` ‏נקבע ‏אחרי אתחול ה-pool → ‏לא משפיע | libuv ‏מאתחל ‏ב-FS ‏ראשון                     | ‏לקבוע ‏בראש index.js ‏לפני ‏כל require ‏שנוגע ב-FS. ‏אמת ב-`require('worker_threads')`-‏בדיקה ‏או ‏מדידת before/after.                                                                                                                                                                                                            |
+| relPath ‏לא תואם ‏למפתחות ה-cache (sep/encoding)          | `walkDir:219` ‏משתמש ב-`split(sep).join('/')` | ‏השתמש ‏באותו helper ‏בדיוק; ‏טסט #5/#6 ‏יתפסו mismatch.                                                                                                                                                                                                                                                                           |
+| prune ‏של תת-עץ ‏מפספס/‏מוחק יותר מדי                     | recursion                                     | ‏prune ‏לפי prefix `relDir + '/'` ‏בדיוק; ‏טסט ‏ייעודי למחיקת תיקייה ‏עם ‏ילדים.                                                                                                                                                                                                                                                   |
+| race: invalidation ‏בזמן `pendingBuilds` ‏פעיל            | build ‏רץ ברקע (‏שורה 506)                    | ‏**‏ממצא אביגיל #6**: `pendingBuilds` ‏ממופתח ב-`vaultId+':full'`/`+':partial'` (‏שורה 276), ‏לא ב-vaultId ‏חשוף. ‏הבדיקה ‏חייבת ‏להיות `[...pendingBuilds.keys()].some(k => k.startsWith(vaultId + ':'))` — ‏ואם ‏true, ‏ליפול ל-`serverCache.delete` (‏ההתנהגות הישנה). `pendingBuilds.has(vaultId)` ‏תמיד ‏false → ‏no-op ‏שקט. |
+| re-compress ‏על כל כתיבה ‏בודדת ‏= CPU                    | ‏Obsidian ‏שומר ‏בתכיפות                      | **debounce** ‏את ה-recompress (‏~250ms) ‏— ‏עדכן את `response` ‏מיד, ‏דחה ‏רק את ‏יצירת ה-`compressed` Buffers. ‏HIT ‏שמגיע ‏לפני recompress ‏משתמש ב-buffer ‏הקודם ‏או ‏בונה ad-hoc.                                                                                                                                              |
+| `structuredClone` ‏על fs גדול ‏יקר                        | Phase 3                                       | ‏clone ‏רק את ה-sub-objects שמשתנים, ‏או mutate-in-place ‏על ה-entry ‏הקיים (‏ה-entry ‏ ‏ ‏ ‏לא ‏משותף ‏מחוץ ל-serverCache).                                                                                                                                                                                                       |
 
 > 3 ‏שתמיד נשכחים: (1) ‏ה-payload ‏חייב להישאר ‏זהה byte-for-byte ‏ל-full (‏טסט #7).
 > (2) ‏binary files ‏לא נכנסים ל-`fs.content` (‏רק stat) — ‏שמור ‏על זה ב-invalidation.
@@ -322,6 +338,7 @@ node --test test/
 ## §7 — Escalation triggers
 
 ‏עצור ושאל את מרדכי ‏אם:
+
 - ‏ה-recompress debounce ‏יוצר ‏race ‏שמחזיר ‏payload ‏לא-עקבי ‏ואין פתרון נקי.
 - ‏מתברר ש-`UV_THREADPOOL_SIZE` ‏לא מספיק ‏וצריך ‏לשנות ‏ארכיטקטורה (‏worker threads / ‏streaming).
 - ‏ה-diff ‏ב-Phase 3 ‏דורש ‏לשמור ‏מבנה-נתונים ‏נוסף ‏שלא ‏קיים (‏שינוי contract ‏של ה-entry).
@@ -332,17 +349,17 @@ node --test test/
 
 ## §8 — Complexity score + verifier tier
 
-| ‏פרמטר | ‏ניקוד |
-|------|------|
-| Refactor ‏של קוד קיים (‏invalidation, build path) | +1 |
-| State machine / async coordination (debounce, pendingBuilds, race) | +2 |
-| >5 files? (‏4 ‏קבצים) | 0 |
-| Pure logic ‏בחלק (bootstrap-invalidate ‏טהור) | -2 |
-| TDD ‏על Phase 2 | -1 |
-| FS edge-cases (prune, rename, dir-vs-file) | +2 |
-| Latency-bound IO / ‏מאונט לא-טריוויאלי (rclone) | +2 |
-| ‏סיכון regression ‏ל-payload ‏שצרכן קריטי (mobile+desktop) ‏תלוי בו | +2 |
-| Pre-compression + Content-Encoding bypass ‏עדין | +2 |
+| ‏פרמטר                                                              | ‏ניקוד |
+| ------------------------------------------------------------------- | ------ |
+| Refactor ‏של קוד קיים (‏invalidation, build path)                   | +1     |
+| State machine / async coordination (debounce, pendingBuilds, race)  | +2     |
+| >5 files? (‏4 ‏קבצים)                                               | 0      |
+| Pure logic ‏בחלק (bootstrap-invalidate ‏טהור)                       | -2     |
+| TDD ‏על Phase 2                                                     | -1     |
+| FS edge-cases (prune, rename, dir-vs-file)                          | +2     |
+| Latency-bound IO / ‏מאונט לא-טריוויאלי (rclone)                     | +2     |
+| ‏סיכון regression ‏ל-payload ‏שצרכן קריטי (mobile+desktop) ‏תלוי בו | +2     |
+| Pre-compression + Content-Encoding bypass ‏עדין                     | +2     |
 
 **Score**: **8 / 10**
 
@@ -355,11 +372,11 @@ node --test test/
 
 ## §9 — ‏שאלות פתוחות
 
-| # | ‏שאלה | ‏ברירת מחדל | ‏חוסם? |
-|---|------|----------|------|
-| 1 | ‏ערך ברירת-מחדל ל-`threadPoolSize` | 64 | ❌ |
-| 2 | debounce window ‏ל-recompress | 250ms | ❌ |
-| 3 | ‏האם ‏להפיל VFS ‏אפשרי ‏בסביבה (‏drop_caches דורש root) ‏או ‏שכלב ‏ימדוד warm-only | ‏כלב ‏יתעד ‏מה ‏שאפשר | ❌ |
+| #   | ‏שאלה                                                                              | ‏ברירת מחדל           | ‏חוסם? |
+| --- | ---------------------------------------------------------------------------------- | --------------------- | ------ |
+| 1   | ‏ערך ברירת-מחדל ל-`threadPoolSize`                                                 | 64                    | ❌     |
+| 2   | debounce window ‏ל-recompress                                                      | 250ms                 | ❌     |
+| 3   | ‏האם ‏להפיל VFS ‏אפשרי ‏בסביבה (‏drop_caches דורש root) ‏או ‏שכלב ‏ימדוד warm-only | ‏כלב ‏יתעד ‏מה ‏שאפשר | ❌     |
 
 ---
 
@@ -370,7 +387,7 @@ node --test test/
 - **File-content update limitation**: עדכון תוכן קובץ קיים (ללא שינוי listing) לא נתפס ע"י incremental (dir mtime לא משתנה). זו מגבלה של mtime-based invalidation — גם בקוד המקורי. Phase 2 (surgical write-path) מטפל בזה.
 - **Commits**: Phase 1=52b2a23, Phase 2=f460b98, Phase 3=ef4d3a7.
 - **NBug1 fix — re-stat מהדיסק (לא מה-cache)**: הWIP לקח content/size/mtime מה-entry הישן ב-cache, אבל זה שבור כשהקובץ הישן לא ב-cache (oversized/binary/חדש). ההחלטה: stat+readFile של newPath מהדיסק אחרי הrename — כמו שה-brief §4 Commit 1 ציין. Edge-case: אם stat נכשל (גזירה?) → size/mtime ל-undefined → updateEntryFile משאיר 0 — זה מקבל אבל נדיר.
-- **NBug2 fix — invalidateEntry הפך async**: _refreshDirMtimes הייתה fire-and-forget, כך שbootstrap request שהגיע לפני שהstat הסתיים ראה mtime ישן. הפתרון: await ל-_refreshDirMtimes בתוך invalidateEntry — כך route handlers מחכים לסיום הrefresh לפני שמחזירים 200. write-coalesce path (שם הקובץ עדיין לא על הדיסק) לא awaits — MISS יקרה אחרי flush וPhase3 יטפל ב-incremental rebuild.
+- **NBug2 fix — invalidateEntry הפך async**: \_refreshDirMtimes הייתה fire-and-forget, כך שbootstrap request שהגיע לפני שהstat הסתיים ראה mtime ישן. הפתרון: await ל-\_refreshDirMtimes בתוך invalidateEntry — כך route handlers מחכים לסיום הrefresh לפני שמחזירים 200. write-coalesce path (שם הקובץ עדיין לא על הדיסק) לא awaits — MISS יקרה אחרי flush וPhase3 יטפל ב-incremental rebuild.
 - **סבב fix שלישי — ביטול ה-async**: התברר שה-async גרם latency על rclone ו-Phase 3 כבר מכסה dir-mtime parity. הוחזרנו ל-sync. dir-mtime parity = הכרעה מודעת: Phase 3 incremental rebuild מטפל בזה חינם.
 - **isText flag**: updateEntryFile קיבל flag isText במקום לשכפל isTextFile לתוך bootstrap-invalidate.js — שומר על טהרת המודול.
 - **/copy fix**: call-site של /copy פוספס ב-NBug1 fix. עכשיו עושה stat+readFile של dest ומעביר isText כמו rename.

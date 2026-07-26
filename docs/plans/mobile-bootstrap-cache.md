@@ -27,6 +27,7 @@ because Obsidian fires ~150 sequential `stat`/`readFile` calls on
 
 **Goal:** make mobile use the bootstrap cache the same way desktop does,
 saving the round-trips. Add server-side knobs for the deployer to:
+
 - Disable bootstrap entirely (some deployments may want to skip the
   large precompute)
 - Cap the per-file size (skip individual large files from the response)
@@ -43,13 +44,13 @@ initial vault scan goes through the same `Filesystem` plugin.
 
 ## What already exists (do not redo)
 
-| Component | Status |
-|---|---|
-| `/api/bootstrap?full=1` endpoint | ✅ done (`src/server/api/bootstrap.js`) |
-| Server-side mtime cache + brotli/gzip pre-compression | ✅ done |
-| Per-file `MAX_CONTENT_BYTES = 500KB` cap | ✅ done (hardcoded) — will become env-var |
-| `watchAndStatAll` fetches bootstrap | ✅ done — will be repurposed to populate the cache |
-| Desktop bootstrap consumption pattern | ✅ done (`src/client/shims/original-fs.js`, `src/client/shims/electron.js`) — reference for mobile |
+| Component                                             | Status                                                                                             |
+| ----------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `/api/bootstrap?full=1` endpoint                      | ✅ done (`src/server/api/bootstrap.js`)                                                            |
+| Server-side mtime cache + brotli/gzip pre-compression | ✅ done                                                                                            |
+| Per-file `MAX_CONTENT_BYTES = 500KB` cap              | ✅ done (hardcoded) — will become env-var                                                          |
+| `watchAndStatAll` fetches bootstrap                   | ✅ done — will be repurposed to populate the cache                                                 |
+| Desktop bootstrap consumption pattern                 | ✅ done (`src/client/shims/original-fs.js`, `src/client/shims/electron.js`) — reference for mobile |
 
 ## High-level architecture
 
@@ -89,19 +90,19 @@ module.exports = {
     // Master switch. When false, /api/bootstrap returns { disabled: true }
     // immediately without scanning the vault. Use case: minimal deployment,
     // single-user setup where the round-trip-saving isn't worth the precompute.
-    enabled: process.env.BOOTSTRAP_DISABLED !== 'true',
+    enabled: process.env.BOOTSTRAP_DISABLED !== "true",
 
     // Per-file size cap (KB). Files larger than this get stat-only in the
     // response — content is fetched on demand. Default 500 (matches current
     // hardcoded MAX_CONTENT_BYTES).
-    maxFileKB: parseInt(process.env.BOOTSTRAP_MAX_FILE_KB || '500', 10),
+    maxFileKB: parseInt(process.env.BOOTSTRAP_MAX_FILE_KB || "500", 10),
 
     // Total response size cap (MB) on the UNCOMPRESSED JSON. When the
     // accumulated file content would exceed this, the server stops adding
     // content but still returns dirs+electron. Marks response with
     // { capped: true }. Default 50 MB. Compressed response is ~85% smaller,
     // so 50MB raw ≈ 7.5MB on the wire.
-    maxTotalMB: parseInt(process.env.BOOTSTRAP_MAX_TOTAL_MB || '50', 10),
+    maxTotalMB: parseInt(process.env.BOOTSTRAP_MAX_TOTAL_MB || "50", 10),
   },
 };
 ```
@@ -134,12 +135,12 @@ file for client-side pure-function helpers.
 RED (write one failing test) → GREEN (minimal code to pass) → next.
 **Do NOT write all tests for a phase before writing any implementation.**
 
-| Phase | What to TDD | What stays manual |
-|---|---|---|
-| Phase 1 (server) | All 5 behaviors (disable, file-cap, total-cap, electron extract, warmup bail-out) via `bootstrap-cache.test.js` extensions. | None — fully testable. |
-| Phase 2 (client cache lookup) | A new pure helper `src/client-mobile/bootstrap-lookup.js` with `lookupFromBootstrap(cache, path, encoding)`. TDD this directly. | Wiring the helper into `Filesystem.readFile/stat/readdir` (3 small splices) + boot.js fetch + Playwright smoke. |
-| Phase 3 (invalidation) | Pure helpers `invalidateCacheEntry(cache, p)` and `invalidateCacheSubtree(cache, prefix)` in new `src/client-mobile/cache-invalidation.js`. TDD directly. | Wiring into mutation methods + WS message handler. |
-| Phase 4 (docs + acceptance) | N/A | All manual + Playwright. |
+| Phase                         | What to TDD                                                                                                                                               | What stays manual                                                                                               |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Phase 1 (server)              | All 5 behaviors (disable, file-cap, total-cap, electron extract, warmup bail-out) via `bootstrap-cache.test.js` extensions.                               | None — fully testable.                                                                                          |
+| Phase 2 (client cache lookup) | A new pure helper `src/client-mobile/bootstrap-lookup.js` with `lookupFromBootstrap(cache, path, encoding)`. TDD this directly.                           | Wiring the helper into `Filesystem.readFile/stat/readdir` (3 small splices) + boot.js fetch + Playwright smoke. |
+| Phase 3 (invalidation)        | Pure helpers `invalidateCacheEntry(cache, p)` and `invalidateCacheSubtree(cache, prefix)` in new `src/client-mobile/cache-invalidation.js`. TDD directly. | Wiring into mutation methods + WS message handler.                                                              |
+| Phase 4 (docs + acceptance)   | N/A                                                                                                                                                       | All manual + Playwright.                                                                                        |
 
 **Refactor before Phase 2:** Extract the cache-lookup logic into a
 standalone module so we can unit-test it without a browser. Same for
@@ -147,6 +148,7 @@ the invalidation helpers. The original plan had them inline in
 `capacitor-shim.js`; TDD favors small testable modules.
 
 **Helper modules to be created (in this plan):**
+
 - `src/client-mobile/bootstrap-lookup.js` — pure, no browser deps
 - `src/client-mobile/cache-invalidation.js` — pure, no browser deps
 - `src/client-mobile/test/bootstrap-lookup.test.js` — uses `node:test`
@@ -160,9 +162,11 @@ or similar) — same pattern as the existing shims.
 
 **Server tests** (`src/server/test/*.test.js`) already work via the
 existing `src/server/package.json`:
+
 ```bash
 cd src/server && npm test       # runs node --test
 ```
+
 Phase 1 extends `src/server/test/bootstrap-cache.test.js` — no new
 infrastructure needed.
 
@@ -181,6 +185,7 @@ infrastructure needed.
 ```
 
 Then:
+
 ```bash
 cd src/client-mobile && npm test
 ```
@@ -212,10 +217,16 @@ Concretely: `createBootstrapRouter` already receives `vaultRegistry` and
 `fallbackVaultRoot`. Add a third parameter `bootstrapConfig`:
 
 ```js
-function createBootstrapRouter(vaultRegistry, fallbackVaultRoot, bootstrapConfig) {
+function createBootstrapRouter(
+  vaultRegistry,
+  fallbackVaultRoot,
+  bootstrapConfig,
+) {
   // bootstrapConfig = { enabled, maxFileKB, maxTotalMB }
   if (!bootstrapConfig.enabled) {
-    console.log('[bootstrap] DISABLED via config (BOOTSTRAP_DISABLED env or override)');
+    console.log(
+      "[bootstrap] DISABLED via config (BOOTSTRAP_DISABLED env or override)",
+    );
     serverCache.clear();
     buildProgress.clear();
   }
@@ -224,12 +235,16 @@ function createBootstrapRouter(vaultRegistry, fallbackVaultRoot, bootstrapConfig
 ```
 
 And in `src/server/index.js`, change the call:
+
 ```js
-app.use('/api/bootstrap', createBootstrapRouter(
-  vaultRegistry,
-  appConfig.vaultPath,
-  appConfig.bootstrap,
-));
+app.use(
+  "/api/bootstrap",
+  createBootstrapRouter(
+    vaultRegistry,
+    appConfig.vaultPath,
+    appConfig.bootstrap,
+  ),
+);
 ```
 
 `appConfig.bootstrap` comes from `config.js` by default, and tests can
@@ -243,6 +258,7 @@ limits create a new router via a new `createApp` call.
 
 **Test helper extension:** the existing `startTestServer(config)` already
 passes `config` to `createApp`. Tests can now add:
+
 ```js
 const server = await startTestServer({
   // ... existing overrides ...
@@ -288,25 +304,26 @@ module-level** so the disable path can call it without doing any FS walk:
 function buildElectronValues(vaultId, vaultRegistry) {
   const vault = vaultId ? vaultRegistry.get(vaultId) : null;
   return {
-    'vault':          vault ? { id: vaultId, path: VAULT_BASE } : {},
-    'vault-list':     vaultRegistry.list(),
-    'is-dev':         false,
-    'version':        APP_VERSION,
-    'frame':          'hidden',
-    'resources':      '',
-    'file-url':       '',
-    'disable-update': true,
-    'update':         '',
-    'check-update':   false,
-    'insider-build':  false,
-    'cli':            false,
-    'disable-gpu':    false,
-    'is-quitting':    false,
+    vault: vault ? { id: vaultId, path: VAULT_BASE } : {},
+    "vault-list": vaultRegistry.list(),
+    "is-dev": false,
+    version: APP_VERSION,
+    frame: "hidden",
+    resources: "",
+    "file-url": "",
+    "disable-update": true,
+    update: "",
+    "check-update": false,
+    "insider-build": false,
+    cli: false,
+    "disable-gpu": false,
+    "is-quitting": false,
   };
 }
 ```
 
 Then in `_buildCacheEntry`, replace lines 246-261 with:
+
 ```js
 const electronValues = buildElectronValues(vaultId, vaultRegistry);
 ```
@@ -314,8 +331,9 @@ const electronValues = buildElectronValues(vaultId, vaultRegistry);
 #### 1c. Per-file cap from env
 
 Replace the hardcoded `MAX_CONTENT_BYTES = 500 * 1024` (line ~115) with:
+
 ```js
-const config = require('../config');
+const config = require("../config");
 const MAX_CONTENT_BYTES = config.bootstrap.maxFileKB * 1024;
 ```
 
@@ -330,9 +348,9 @@ Inject AT THE TOP of the handler (before any cache lookups, before
 `buildCacheEntry`):
 
 ```js
-router.get('/', async (req, res) => {
-  const vaultId = req.query.vault || '';
-  const full = req.query.full === '1';
+router.get("/", async (req, res) => {
+  const vaultId = req.query.vault || "";
+  const full = req.query.full === "1";
 
   // ── Disable path ────────────────────────────────────────────────────
   // When BOOTSTRAP_DISABLED=true, return a minimal payload immediately.
@@ -361,7 +379,7 @@ session. Otherwise stale cache data leaks. Add at the top of
 ```js
 function createBootstrapRouter(vaultRegistry, fallbackVaultRoot) {
   if (!config.bootstrap.enabled) {
-    console.log('[bootstrap] DISABLED via BOOTSTRAP_DISABLED env var');
+    console.log("[bootstrap] DISABLED via BOOTSTRAP_DISABLED env var");
     serverCache.clear();
     buildProgress.clear();
   }
@@ -389,11 +407,13 @@ async function warmUpBootstrapCache(vaultRegistry, fallbackVaultRoot) {
 #### 1f. Total response cap — explicit `walkDir` signature change
 
 The current signature:
+
 ```js
 async function walkDir(dir, root, fsCache, dirsCache, walkHidden = false, progress = null)
 ```
 
 Change to:
+
 ```js
 async function walkDir(dir, root, fsCache, dirsCache, walkHidden = false, progress = null, budget = null)
 ```
@@ -401,49 +421,73 @@ async function walkDir(dir, root, fsCache, dirsCache, walkHidden = false, progre
 `budget` is a shared mutable object: `{ remaining: <bytes>, capped: false }`.
 Threading it through is the trickiest part — there are TWO call sites of
 `walkDir` in `_buildCacheEntry`:
+
 - Line 313: `walkDir(obsidianDir, vaultRoot, fsCache, dirsCache, true, progress)` — for `.obsidian/`
 - Line 354: `walkDir(vaultRoot, vaultRoot, fsCache, dirsCache, false, progress)` — for full vault walk
 
 PLUS the recursive call **inside** walkDir:
+
 - Line 187: `await walkDir(abs, root, fsCache, dirsCache, walkHidden, progress)` — recursive descent
 
 **ALL three must pass the same budget object** (or `null`). Concretely:
 
 ```js
 // In _buildCacheEntry, BEFORE the .obsidian walk:
-const budget = full ? {
-  remaining: config.bootstrap.maxTotalMB * 1024 * 1024,
-  capped: false,
-} : null;
+const budget = full
+  ? {
+      remaining: config.bootstrap.maxTotalMB * 1024 * 1024,
+      capped: false,
+    }
+  : null;
 
-await walkDir(obsidianDir, vaultRoot, fsCache, dirsCache, true, progress, budget);
+await walkDir(
+  obsidianDir,
+  vaultRoot,
+  fsCache,
+  dirsCache,
+  true,
+  progress,
+  budget,
+);
 // ...
 if (full) {
-  await walkDir(vaultRoot, vaultRoot, fsCache, dirsCache, false, progress, budget);
+  await walkDir(
+    vaultRoot,
+    vaultRoot,
+    fsCache,
+    dirsCache,
+    false,
+    progress,
+    budget,
+  );
 }
 ```
 
 And inside `walkDir`, the recursive call (line 187):
+
 ```js
 await walkDir(abs, root, fsCache, dirsCache, walkHidden, progress, budget);
 ```
 
 Inside the readFile batch (current line 200-205):
+
 ```js
-await Promise.all(batch.map(async ({ abs, rel }) => {
-  try {
-    const content = await fsp.readFile(abs, 'utf8');
-    // NEW: budget enforcement
-    if (budget) {
-      if (budget.remaining < content.length) {
-        budget.capped = true;
-        return;  // skip — stat already in fsCache from line 190
+await Promise.all(
+  batch.map(async ({ abs, rel }) => {
+    try {
+      const content = await fsp.readFile(abs, "utf8");
+      // NEW: budget enforcement
+      if (budget) {
+        if (budget.remaining < content.length) {
+          budget.capped = true;
+          return; // skip — stat already in fsCache from line 190
+        }
+        budget.remaining -= content.length;
       }
-      budget.remaining -= content.length;
-    }
-    fsCache[rel] = { ...fsCache[rel], content };
-  } catch (_) {}
-}));
+      fsCache[rel] = { ...fsCache[rel], content };
+    } catch (_) {}
+  }),
+);
 ```
 
 Note: I read the file first then check budget against actual content length
@@ -484,11 +528,11 @@ if (budget && budget.capped) {
 Update the existing log line (currently line 397-401) to include capped/disabled:
 
 ```js
-const cappedFlag = budget && budget.capped ? ' CAPPED' : '';
+const cappedFlag = budget && budget.capped ? " CAPPED" : "";
 console.log(
   `[bootstrap] vault=${vaultId.slice(0, 8)}… full=${full}${cappedFlag} ` +
-  `files=${fileCount}(content:${withContent}) dirs=${dirCount} ` +
-  `size=${(byteCount / 1024).toFixed(0)}KB time=${ms}ms`,
+    `files=${fileCount}(content:${withContent}) dirs=${dirCount} ` +
+    `size=${(byteCount / 1024).toFixed(0)}KB time=${ms}ms`,
 );
 ```
 
@@ -501,37 +545,41 @@ For the disable path, the one-time `[bootstrap] DISABLED via …` log in
 `src/server/test/bootstrap-cache.test.js`:
 
 ```js
-test('BOOTSTRAP_DISABLED=true returns {disabled:true} without scanning', async (t) => {
-  const tmp = await fsp.mkdtemp(path.join(os.tmpdir(), 'obsidian-web-bootstrap-'));
+test("BOOTSTRAP_DISABLED=true returns {disabled:true} without scanning", async (t) => {
+  const tmp = await fsp.mkdtemp(
+    path.join(os.tmpdir(), "obsidian-web-bootstrap-"),
+  );
   t.after(() => fsp.rm(tmp, { recursive: true, force: true }));
   const vaultPath = await makeVaultFixture(tmp);
 
   const server = await startTestServer({
-    clientPath: path.join(tmp, 'client'),
-    obsidianPath: path.join(tmp, 'obsidian'),
-    registryPath: path.join(tmp, 'vaults.json'),
+    clientPath: path.join(tmp, "client"),
+    obsidianPath: path.join(tmp, "obsidian"),
+    registryPath: path.join(tmp, "vaults.json"),
     vaultPath,
     bootstrap: { enabled: false, maxFileKB: 500, maxTotalMB: 50 },
   });
   t.after(server.close);
 
-  const openRes = await fetch(server.baseUrl + '/api/vaults/open', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+  const openRes = await fetch(server.baseUrl + "/api/vaults/open", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ path: vaultPath, create: false }),
   });
   const { id: vaultId } = await openRes.json();
 
   const t0 = Date.now();
-  const res = await fetch(`${server.baseUrl}/api/bootstrap?vault=${vaultId}&full=1`);
+  const res = await fetch(
+    `${server.baseUrl}/api/bootstrap?vault=${vaultId}&full=1`,
+  );
   const elapsed = Date.now() - t0;
   const body = await res.json();
 
   assert.equal(res.status, 200);
-  assert.equal(body.disabled, true, 'should mark response as disabled');
-  assert.ok(body.electron, 'electron values still present');
-  assert.deepEqual(body.fs, {}, 'fs should be empty');
-  assert.deepEqual(body.dirs, {}, 'dirs should be empty');
+  assert.equal(body.disabled, true, "should mark response as disabled");
+  assert.ok(body.electron, "electron values still present");
+  assert.deepEqual(body.fs, {}, "fs should be empty");
+  assert.deepEqual(body.dirs, {}, "dirs should be empty");
   assert.ok(elapsed < 200, `should respond in <200ms, got ${elapsed}ms`);
 });
 ```
@@ -540,6 +588,7 @@ This test fails initially because the disable path doesn't exist yet
 AND because `createApp` doesn't honor `bootstrap` from override config
 (it still reads `require('../config').bootstrap`). The minimal code to
 get to GREEN:
+
 1. Thread `appConfig.bootstrap` through `createApp` → `createBootstrapRouter`.
 2. Add the early-return at the top of `router.get('/')` for `!bootstrap.enabled`.
 3. Make sure `buildElectronValues` is reachable from the disable path
@@ -574,25 +623,37 @@ File: `src/client-mobile/boot.js`
 
    ```js
    // After VAULT_ID resolved, before script injection:
-   var bootstrapPromise = fetch('/api/bootstrap?vault=' + encodeURIComponent(VAULT_ID) + '&full=1', {
-     headers: { 'Accept-Encoding': 'br, gzip' },
-   })
-     .then(function (r) { return r.ok ? r.json() : null; })
+   var bootstrapPromise = fetch(
+     "/api/bootstrap?vault=" + encodeURIComponent(VAULT_ID) + "&full=1",
+     {
+       headers: { "Accept-Encoding": "br, gzip" },
+     },
+   )
+     .then(function (r) {
+       return r.ok ? r.json() : null;
+     })
      .then(function (data) {
        if (!data) return null;
        if (data.disabled) {
-         console.log('[obsidian-web] bootstrap disabled by server, all FS reads will round-trip');
+         console.log(
+           "[obsidian-web] bootstrap disabled by server, all FS reads will round-trip",
+         );
          window.__owBootstrapCache = null;
          return null;
        }
        window.__owBootstrapCache = data;
        var fileCount = data.fs ? Object.keys(data.fs).length : 0;
-       var capped = data.capped ? ' (CAPPED: ' + data.cappedReason + ')' : '';
-       console.log('[obsidian-web] bootstrap loaded: ' + fileCount + ' files cached' + capped);
+       var capped = data.capped ? " (CAPPED: " + data.cappedReason + ")" : "";
+       console.log(
+         "[obsidian-web] bootstrap loaded: " +
+           fileCount +
+           " files cached" +
+           capped,
+       );
        return data;
      })
      .catch(function (err) {
-       console.warn('[obsidian-web] bootstrap failed:', err.message);
+       console.warn("[obsidian-web] bootstrap failed:", err.message);
        window.__owBootstrapCache = null;
      });
 
@@ -620,15 +681,15 @@ File: `src/client-mobile/bootstrap-lookup.js` (NEW — extracted helper, TDD'd)
  *   }
  */
 (function () {
-  'use strict';
+  "use strict";
 
   // Returns the cached file content (string) or null. ONLY hits for
   // text reads (encoding truthy) with a stat-and-content entry.
   function lookupContent(cache, p, encoding) {
-    if (!encoding) return null;             // binary read — cache stores only utf8
+    if (!encoding) return null; // binary read — cache stores only utf8
     if (!cache || !cache.fs) return null;
     const entry = cache.fs[p];
-    if (!entry || typeof entry.content !== 'string') return null;
+    if (!entry || typeof entry.content !== "string") return null;
     return entry.content;
   }
 
@@ -638,11 +699,11 @@ File: `src/client-mobile/bootstrap-lookup.js` (NEW — extracted helper, TDD'd)
     const entry = cache.fs[p];
     if (!entry) return null;
     return {
-      type:  entry.isDirectory ? 'directory' : 'file',
-      size:  entry.size || 0,
+      type: entry.isDirectory ? "directory" : "file",
+      size: entry.size || 0,
       mtime: entry.mtime || 0,
       ctime: entry.mtime || 0,
-      uri:   '',
+      uri: "",
     };
   }
 
@@ -653,18 +714,18 @@ File: `src/client-mobile/bootstrap-lookup.js` (NEW — extracted helper, TDD'd)
     if (!entries) return null;
     return entries.map(function (e) {
       return {
-        name:  e.name,
-        type:  e.isDirectory ? 'directory' : 'file',
-        size:  e.size || 0,
+        name: e.name,
+        type: e.isDirectory ? "directory" : "file",
+        size: e.size || 0,
         mtime: e.mtime || 0,
-        uri:   '',
+        uri: "",
         ctime: e.mtime || 0,
       };
     });
   }
 
   // Node export (for tests) + browser global.
-  if (typeof module !== 'undefined' && module.exports) {
+  if (typeof module !== "undefined" && module.exports) {
     module.exports = { lookupContent, lookupStat, lookupDir };
   } else {
     window.__owBootstrapLookup = { lookupContent, lookupStat, lookupDir };
@@ -674,7 +735,7 @@ File: `src/client-mobile/bootstrap-lookup.js` (NEW — extracted helper, TDD'd)
 
 File: `src/client-mobile/shims/capacitor-shim.js` — splice the helper in.
 
-3. **Filesystem.readFile** (around line 124) — add cache check at the top:
+1. **Filesystem.readFile** (around line 124) — add cache check at the top:
 
    ```js
    async readFile(opts) {
@@ -695,7 +756,7 @@ File: `src/client-mobile/shims/capacitor-shim.js` — splice the helper in.
    }
    ```
 
-4. **Filesystem.stat** (around line 244):
+2. **Filesystem.stat** (around line 244):
 
    ```js
    async stat(opts) {
@@ -710,7 +771,7 @@ File: `src/client-mobile/shims/capacitor-shim.js` — splice the helper in.
    }
    ```
 
-5. **Filesystem.readdir** (around line 233):
+3. **Filesystem.readdir** (around line 233):
 
    ```js
    async readdir(opts) {
@@ -725,7 +786,7 @@ File: `src/client-mobile/shims/capacitor-shim.js` — splice the helper in.
    }
    ```
 
-6. **Filesystem.watchAndStatAll**: await the bootstrap promise instead of
+4. **Filesystem.watchAndStatAll**: await the bootstrap promise instead of
    doing its own fetch. Around line 345:
 
    ```js
@@ -773,20 +834,20 @@ File: `src/client-mobile/shims/capacitor-shim.js` — splice the helper in.
 `src/client-mobile/test/bootstrap-lookup.test.js`:
 
 ```js
-'use strict';
+"use strict";
 
-const assert = require('assert/strict');
-const test = require('node:test');
-const { lookupContent } = require('../bootstrap-lookup');
+const assert = require("assert/strict");
+const test = require("node:test");
+const { lookupContent } = require("../bootstrap-lookup");
 
-test('lookupContent returns the cached text for a hit', () => {
+test("lookupContent returns the cached text for a hit", () => {
   const cache = {
     fs: {
-      'Welcome.md': { content: '# hello\n', size: 8, mtime: 1, isFile: true },
+      "Welcome.md": { content: "# hello\n", size: 8, mtime: 1, isFile: true },
     },
   };
-  const result = lookupContent(cache, 'Welcome.md', 'utf8');
-  assert.equal(result, '# hello\n');
+  const result = lookupContent(cache, "Welcome.md", "utf8");
+  assert.equal(result, "# hello\n");
 });
 ```
 
@@ -795,13 +856,13 @@ create the module with just `lookupContent` returning entry content
 when present. Next RED:
 
 ```js
-test('lookupContent returns null for stat-only entry (oversized/capped file)', () => {
+test("lookupContent returns null for stat-only entry (oversized/capped file)", () => {
   const cache = {
     fs: {
-      'big.md': { size: 1_000_000, mtime: 1, isFile: true /* no content */ },
+      "big.md": { size: 1_000_000, mtime: 1, isFile: true /* no content */ },
     },
   };
-  assert.equal(lookupContent(cache, 'big.md', 'utf8'), null);
+  assert.equal(lookupContent(cache, "big.md", "utf8"), null);
 });
 ```
 
@@ -852,14 +913,14 @@ File: `src/client-mobile/cache-invalidation.js` (NEW — pure, TDD'd)
  * No browser/DOM deps — testable with node:test.
  */
 (function () {
-  'use strict';
+  "use strict";
 
   // Drop a single path's stat+content, and drop its parent dir listing.
   function invalidateCacheEntry(cache, p) {
     if (!cache) return;
     if (cache.fs) delete cache.fs[p];
     if (cache.dirs) {
-      const parent = p.includes('/') ? p.substring(0, p.lastIndexOf('/')) : '';
+      const parent = p.includes("/") ? p.substring(0, p.lastIndexOf("/")) : "";
       delete cache.dirs[parent];
     }
   }
@@ -868,7 +929,7 @@ File: `src/client-mobile/cache-invalidation.js` (NEW — pure, TDD'd)
   // recursive and rename of a directory.
   function invalidateCacheSubtree(cache, prefix) {
     if (!cache) return;
-    const prefixSlash = prefix + '/';
+    const prefixSlash = prefix + "/";
     if (cache.fs) {
       for (const key of Object.keys(cache.fs)) {
         if (key === prefix || key.startsWith(prefixSlash)) {
@@ -882,15 +943,20 @@ File: `src/client-mobile/cache-invalidation.js` (NEW — pure, TDD'd)
           delete cache.dirs[key];
         }
       }
-      const parent = prefix.includes('/') ? prefix.substring(0, prefix.lastIndexOf('/')) : '';
+      const parent = prefix.includes("/")
+        ? prefix.substring(0, prefix.lastIndexOf("/"))
+        : "";
       delete cache.dirs[parent];
     }
   }
 
-  if (typeof module !== 'undefined' && module.exports) {
+  if (typeof module !== "undefined" && module.exports) {
     module.exports = { invalidateCacheEntry, invalidateCacheSubtree };
   } else {
-    window.__owCacheInvalidation = { invalidateCacheEntry, invalidateCacheSubtree };
+    window.__owCacheInvalidation = {
+      invalidateCacheEntry,
+      invalidateCacheSubtree,
+    };
   }
 })();
 ```
@@ -901,27 +967,34 @@ global:
 ```js
 function invalidateCacheEntry(p) {
   window.__owCacheInvalidation &&
-    window.__owCacheInvalidation.invalidateCacheEntry(window.__owBootstrapCache, p);
+    window.__owCacheInvalidation.invalidateCacheEntry(
+      window.__owBootstrapCache,
+      p,
+    );
 }
 function invalidateCacheSubtree(prefix) {
   window.__owCacheInvalidation &&
-    window.__owCacheInvalidation.invalidateCacheSubtree(window.__owBootstrapCache, prefix);
+    window.__owCacheInvalidation.invalidateCacheSubtree(
+      window.__owBootstrapCache,
+      prefix,
+    );
 }
 ```
 
 Wire them into the mutation methods (line ranges refer to current code):
 
-| Method | Line | Invalidation |
-|---|---|---|
-| `writeFile` | 151 | `invalidateCacheEntry(p)` after successful response |
-| `appendFile` | 176 | `invalidateCacheEntry(p)` after successful response |
-| `deleteFile` | 195 | `invalidateCacheEntry(p)` after successful response |
-| `mkdir` | 205 | `invalidateCacheEntry(p)` (clears parent dir listing) |
-| `rmdir` | 219 | **`invalidateCacheSubtree(p)`** if `opts.recursive`, else `invalidateCacheEntry(p)` |
-| `rename` | 261 | `invalidateCacheSubtree(from)` + `invalidateCacheSubtree(to)` — `from` may have been a dir |
-| `copy` | 276 | `invalidateCacheSubtree(to)` — `to` may be a dir |
+| Method       | Line | Invalidation                                                                               |
+| ------------ | ---- | ------------------------------------------------------------------------------------------ |
+| `writeFile`  | 151  | `invalidateCacheEntry(p)` after successful response                                        |
+| `appendFile` | 176  | `invalidateCacheEntry(p)` after successful response                                        |
+| `deleteFile` | 195  | `invalidateCacheEntry(p)` after successful response                                        |
+| `mkdir`      | 205  | `invalidateCacheEntry(p)` (clears parent dir listing)                                      |
+| `rmdir`      | 219  | **`invalidateCacheSubtree(p)`** if `opts.recursive`, else `invalidateCacheEntry(p)`        |
+| `rename`     | 261  | `invalidateCacheSubtree(from)` + `invalidateCacheSubtree(to)` — `from` may have been a dir |
+| `copy`       | 276  | `invalidateCacheSubtree(to)` — `to` may be a dir                                           |
 
 Example wiring for `writeFile`:
+
 ```js
 async writeFile(opts) {
   // ... existing HTTP write up to "if (!res.ok) ..." ...
@@ -935,6 +1008,7 @@ async writeFile(opts) {
 ```
 
 Example for `rmdir`:
+
 ```js
 async rmdir(opts) {
   // ... existing HTTP code up to error handling ...
@@ -954,7 +1028,7 @@ async rmdir(opts) {
 ws.onmessage = (ev) => {
   try {
     const msg = JSON.parse(ev.data);
-    if (msg.type === 'change' || msg.type === 'add' || msg.type === 'unlink') {
+    if (msg.type === "change" || msg.type === "add" || msg.type === "unlink") {
       // Invalidate cache so subsequent reads pick up the change.
       invalidateCacheEntry(msg.path);
       // ... existing listener notification logic unchanged ...
@@ -969,36 +1043,42 @@ ws.onmessage = (ev) => {
 `src/client-mobile/test/cache-invalidation.test.js`:
 
 ```js
-'use strict';
+"use strict";
 
-const assert = require('assert/strict');
-const test = require('node:test');
-const { invalidateCacheEntry } = require('../cache-invalidation');
+const assert = require("assert/strict");
+const test = require("node:test");
+const { invalidateCacheEntry } = require("../cache-invalidation");
 
-test('invalidateCacheEntry drops the file entry and its parent dir listing', () => {
+test("invalidateCacheEntry drops the file entry and its parent dir listing", () => {
   const cache = {
     fs: {
-      'Notes/foo.md': { content: 'a', size: 1, mtime: 1, isFile: true },
-      'Notes/bar.md': { content: 'b', size: 1, mtime: 1, isFile: true },
-      'other.md':     { content: 'c', size: 1, mtime: 1, isFile: true },
+      "Notes/foo.md": { content: "a", size: 1, mtime: 1, isFile: true },
+      "Notes/bar.md": { content: "b", size: 1, mtime: 1, isFile: true },
+      "other.md": { content: "c", size: 1, mtime: 1, isFile: true },
     },
     dirs: {
-      '':      [{ name: 'Notes', isDirectory: true }, { name: 'other.md', isFile: true }],
-      'Notes': [{ name: 'foo.md', isFile: true }, { name: 'bar.md', isFile: true }],
+      "": [
+        { name: "Notes", isDirectory: true },
+        { name: "other.md", isFile: true },
+      ],
+      Notes: [
+        { name: "foo.md", isFile: true },
+        { name: "bar.md", isFile: true },
+      ],
     },
   };
 
-  invalidateCacheEntry(cache, 'Notes/foo.md');
+  invalidateCacheEntry(cache, "Notes/foo.md");
 
   // The target file is gone.
-  assert.equal(cache.fs['Notes/foo.md'], undefined);
+  assert.equal(cache.fs["Notes/foo.md"], undefined);
   // Siblings untouched.
-  assert.ok(cache.fs['Notes/bar.md']);
-  assert.ok(cache.fs['other.md']);
+  assert.ok(cache.fs["Notes/bar.md"]);
+  assert.ok(cache.fs["other.md"]);
   // Parent dir listing dropped (will be re-fetched on next readdir).
-  assert.equal(cache.dirs['Notes'], undefined);
+  assert.equal(cache.dirs["Notes"], undefined);
   // Other dirs untouched.
-  assert.ok(cache.dirs['']);
+  assert.ok(cache.dirs[""]);
 });
 ```
 
@@ -1007,9 +1087,11 @@ require throws). The minimal GREEN is creating the module with just
 `invalidateCacheEntry` as defined in the helper skeleton above.
 
 Then the NEXT test for the same module:
+
 ```js
 test('invalidateCacheEntry on a root-level file drops dirs[""]', () => { ... });
 ```
+
 Then `invalidateCacheSubtree`, then edge cases. **One at a time.**
 
 #### Acceptance for Phase 3
@@ -1113,7 +1195,7 @@ runtimes use it now.
      fetch on demand.
    - Don't add them to fs cache at all; client falls through to HTTP
      because `fs[p]` is undefined.
-   Choose option 2 — simpler. The dirs cache still has their stat.
+     Choose option 2 — simpler. The dirs cache still has their stat.
 
 8. **`BOOTSTRAP_DISABLED` server-side, but client still fetches.**
    When disabled, the server returns `{ disabled: true, ... }` in <50ms.
@@ -1178,21 +1260,17 @@ The plan is complete when **all** of the following are true:
       `copy`, `appendFile`) invalidate the affected cache entries.
 - [ ] Watch events from chokidar invalidate the affected cache entries.
 - [ ] **Measurable speedup on the large vault** (009428c4, 394 files,
-      68 nested folders):
-      - **Baseline (before this plan):** time from `goto /mobile?vault=…`
-        until `document.querySelector('.workspace')` resolves AND
-        `window.app.metadataCache.inProgressTaskCount === 0` ≈ 5-8s
-        (mostly network round-trips).
-      - **Target after this plan:** ≤ 2s on the same network.
-      - **How to measure:** in DevTools console after navigation:
-        ```js
-        performance.timing.loadEventEnd - performance.timing.navigationStart
-        ```
-        And visually: time from URL bar enter to "Indexing complete" status.
-      - **Acceptance:** at least 60% reduction vs baseline.
+      68 nested folders): - **Baseline (before this plan):** time from `goto /mobile?vault=…`
+      until `document.querySelector('.workspace')` resolves AND
+      `window.app.metadataCache.inProgressTaskCount === 0` ≈ 5-8s
+      (mostly network round-trips). - **Target after this plan:** ≤ 2s on the same network. - **How to measure:** in DevTools console after navigation:
+      `js
+      performance.timing.loadEventEnd - performance.timing.navigationStart
+      `
+      And visually: time from URL bar enter to "Indexing complete" status. - **Acceptance:** at least 60% reduction vs baseline.
 - [ ] **`BOOTSTRAP_DISABLED=true` smoke test**: vault still loads
       correctly. Console shows `[obsidian-web] bootstrap disabled by
-      server, all FS reads will round-trip`. Time-to-workspace returns
+    server, all FS reads will round-trip`. Time-to-workspace returns
       to ~5-8s (no regression from disabled state vs original).
 - [ ] **`BOOTSTRAP_MAX_TOTAL_MB=1` capping test**: response has
       `capped: true`. Some text file content is in `cache.fs`, the rest
@@ -1214,56 +1292,56 @@ contracts.
 
 In `src/client-mobile/boot.js`:
 
-| Item | Line |
-|---|---|
-| `VAULT_ID` resolution | 41 |
-| Vault verification `fetch('/api/fs/stat?…')` | 218 |
-| Script injection loop | 230 |
-| Workspace MutationObserver | 251 |
-| **Insertion point for bootstrap fetch** | between line ~228 (after `setStatus('Loading Obsidian mobile...')`) and line 230 (before the injection loop). Parallel with the script downloads. |
+| Item                                         | Line                                                                                                                                              |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `VAULT_ID` resolution                        | 41                                                                                                                                                |
+| Vault verification `fetch('/api/fs/stat?…')` | 218                                                                                                                                               |
+| Script injection loop                        | 230                                                                                                                                               |
+| Workspace MutationObserver                   | 251                                                                                                                                               |
+| **Insertion point for bootstrap fetch**      | between line ~228 (after `setStatus('Loading Obsidian mobile...')`) and line 230 (before the injection loop). Parallel with the script downloads. |
 
 In `src/client-mobile/shims/capacitor-shim.js`:
 
-| Item | Line |
-|---|---|
-| `getVaultId()` / `fullPath()` helpers (good place to add `invalidateCacheEntry` next to them) | 55, 86 |
-| `Filesystem.readFile` | 124 |
-| `Filesystem.writeFile` | 151 |
-| `Filesystem.appendFile` | 176 |
-| `Filesystem.deleteFile` | 195 |
-| `Filesystem.mkdir` | 205 |
-| `Filesystem.rmdir` | 219 |
-| `Filesystem.readdir` | 233 |
-| `Filesystem.stat` | 244 |
-| `Filesystem.rename` | 261 |
-| `Filesystem.copy` | 276 |
-| `Filesystem.startWatch` (WS handler at `ws.onmessage`) | 315, message handler at ~321 |
-| `Filesystem.watchAndStatAll` | 345 |
+| Item                                                                                          | Line                         |
+| --------------------------------------------------------------------------------------------- | ---------------------------- |
+| `getVaultId()` / `fullPath()` helpers (good place to add `invalidateCacheEntry` next to them) | 55, 86                       |
+| `Filesystem.readFile`                                                                         | 124                          |
+| `Filesystem.writeFile`                                                                        | 151                          |
+| `Filesystem.appendFile`                                                                       | 176                          |
+| `Filesystem.deleteFile`                                                                       | 195                          |
+| `Filesystem.mkdir`                                                                            | 205                          |
+| `Filesystem.rmdir`                                                                            | 219                          |
+| `Filesystem.readdir`                                                                          | 233                          |
+| `Filesystem.stat`                                                                             | 244                          |
+| `Filesystem.rename`                                                                           | 261                          |
+| `Filesystem.copy`                                                                             | 276                          |
+| `Filesystem.startWatch` (WS handler at `ws.onmessage`)                                        | 315, message handler at ~321 |
+| `Filesystem.watchAndStatAll`                                                                  | 345                          |
 
 In `src/server/api/bootstrap.js`:
 
-| Item | Line |
-|---|---|
-| `MAX_CONTENT_BYTES` constant | 115 |
-| `isTextFile()` helper | 117 |
-| `walkDir()` signature + body | 133 |
-| `walkDir()` recursive call inside | 187 |
-| `walkDir()` text-file content read loop | 198-210 |
-| `_buildCacheEntry()` start | 241 |
-| **Electron values inline block (to extract)** | 246-261 |
-| First `walkDir` call (`.obsidian/`) | 313 |
-| Second `walkDir` call (full vault) | 354 |
-| `response = { electron, fs, dirs }` construction | 365 |
-| Pre-compression call | 388 |
-| Log line (final) | 397-401 |
-| Router `GET /` handler entry | **421** |
-| `warmUpBootstrapCache()` function | 472 |
+| Item                                             | Line    |
+| ------------------------------------------------ | ------- |
+| `MAX_CONTENT_BYTES` constant                     | 115     |
+| `isTextFile()` helper                            | 117     |
+| `walkDir()` signature + body                     | 133     |
+| `walkDir()` recursive call inside                | 187     |
+| `walkDir()` text-file content read loop          | 198-210 |
+| `_buildCacheEntry()` start                       | 241     |
+| **Electron values inline block (to extract)**    | 246-261 |
+| First `walkDir` call (`.obsidian/`)              | 313     |
+| Second `walkDir` call (full vault)               | 354     |
+| `response = { electron, fs, dirs }` construction | 365     |
+| Pre-compression call                             | 388     |
+| Log line (final)                                 | 397-401 |
+| Router `GET /` handler entry                     | **421** |
+| `warmUpBootstrapCache()` function                | 472     |
 
 In `src/server/config.js`:
 
-| Item | Line |
-|---|---|
-| `module.exports = {` | 62 |
+| Item                                                             | Line           |
+| ---------------------------------------------------------------- | -------------- |
+| `module.exports = {`                                             | 62             |
 | (insert `bootstrap: { ... }` block here, anywhere in the object) | end of exports |
 
 ## Effort estimate (with TDD)

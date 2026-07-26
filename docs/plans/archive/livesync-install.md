@@ -41,11 +41,13 @@ cd .worktrees/livesync-install
 ### Reading list
 
 **must-read**:
+
 - `src/server/system-plugins.js` — ‏כל הקובץ (‏ה-overlay; `SYSTEM_PLUGIN_IDS` Set → ‏יהפוך Map).
 - `src/server/api/fs.js` ‏שורות 236-253 (‏readdir ‏של ‏plugin dir — **‏שורה 253 ‏משתמשת ‏ב-`SYSTEM_PLUGINS_DIR` ‏הקבוע, ‏חייבת ‏תיקון**) ‏ו-188-192 (‏read ‏דרך `tryGetSystemFilePath`).
 - `scripts/update-obsidian-mobile.js` ‏שורות 1-90 — **‏דפוס ‏ההורדה** (‏`https`, `--version`/`--force`, `withRetries`, cache ‏ב-`.tmp/`). ‏מודל ל-install-livesync.js.
 
 **reference**:
+
 - `livesync-implementation.md` ‏שורות 273-315 (Phase 3 ‏המקורי).
 - `.gitignore` — `vendor/` ‏כבר ‏שם → `vendor/plugins/` ‏אוטומטית ‏gitignored (‏אל ‏תוסיף ‏כלום).
 
@@ -63,16 +65,16 @@ cd .worktrees/livesync-install
 
 ## §2 — Scope
 
-| ‏פיצ'ר | ‏כן/לא | ‏לאן |
-|------|------|------|
-| overlay ‏סורק ‏שתי ‏תיקיות (`src/plugins` + `vendor/plugins`) | ✅ | Commit 0 |
-| `Set` → `Map` (id → rootDir) ‏ב-system-plugins.js | ✅ | Commit 0 |
-| ‏תיקון `fs.js:253` ‏(`SYSTEM_PLUGINS_DIR` ‏קבוע → resolver ‏פר-id) | ✅ | Commit 0 |
-| `scripts/install-livesync.js` (download → `vendor/plugins/obsidian-livesync/` + `data.json`) | ✅ | Commit 1 |
-| ‏מימוש `App.requestUrl` | ❌ | Slice A |
-| E2E ‏מול CouchDB | ❌ | Slice C |
-| ‏שינוי ‏פורמט ‏manifest/community-plugins.json | ❌ | ‏אסור |
-| `SYSTEM_PLUGINS` env-var ‏gating | ❌ | future (PLAN.md) |
+| ‏פיצ'ר                                                                                       | ‏כן/לא | ‏לאן             |
+| -------------------------------------------------------------------------------------------- | ------ | ---------------- |
+| overlay ‏סורק ‏שתי ‏תיקיות (`src/plugins` + `vendor/plugins`)                                | ✅     | Commit 0         |
+| `Set` → `Map` (id → rootDir) ‏ב-system-plugins.js                                            | ✅     | Commit 0         |
+| ‏תיקון `fs.js:253` ‏(`SYSTEM_PLUGINS_DIR` ‏קבוע → resolver ‏פר-id)                           | ✅     | Commit 0         |
+| `scripts/install-livesync.js` (download → `vendor/plugins/obsidian-livesync/` + `data.json`) | ✅     | Commit 1         |
+| ‏מימוש `App.requestUrl`                                                                      | ❌     | Slice A          |
+| E2E ‏מול CouchDB                                                                             | ❌     | Slice C          |
+| ‏שינוי ‏פורמט ‏manifest/community-plugins.json                                               | ❌     | ‏אסור            |
+| `SYSTEM_PLUGINS` env-var ‏gating                                                             | ❌     | future (PLAN.md) |
 
 > ‏עיקרון ‏הקונבנציה (‏החלטה ‏שנקבעה): ‏קוד ‏שלנו → `src/plugins/` (‏בגיט). ‏הורדות ‏צד-שלישי →
 > `vendor/plugins/` (‏gitignored, ‏regenerated ‏ע"י ‏הסקריפט, ‏כמו `vendor/obsidian`). ‏לא ‏בגיט, ‏לא ‏בכספת.
@@ -108,6 +110,7 @@ cd .worktrees/livesync-install
 ‏הפוך ‏ל-`Map<id, rootDir>`.
 
 **‏קבצים שמשתנים**:
+
 - `src/server/system-plugins.js`:
   - ‏הוסף `VENDOR_PLUGINS_DIR = path.resolve(__dirname, '..', '..', 'vendor', 'plugins')`.
     > ⚠️ `__dirname` ‏= `src/server`; `'..','..'` ‏= ‏repo root; ‏+`vendor/plugins`. ‏(‏שונה ‏מ-`SYSTEM_PLUGINS_DIR`
@@ -131,6 +134,7 @@ cd .worktrees/livesync-install
     > ‏הוא ‏כבר ‏לא ‏בשימוש ‏ב-fs.js — **‏הסר ‏את ‏הייבוא** (‏אחרת import ‏מת). ‏בדוק ‏עם grep ‏לפני ‏הסרה.
 
 **Verification** (integration):
+
 ```bash
 cd src/server && node --test test/system-plugins.test.js
 # fixture: ‏תיקיית tmp ‏עם src/plugins/{ours} + vendor/plugins/{thirdparty}.
@@ -138,13 +142,15 @@ cd src/server && node --test test/system-plugins.test.js
 # tryGetSystemFilePath ‏פותר ‏קבצים ‏משתיהן; id ‏כפול → src/plugins ‏מנצח.
 node --test test/   # ‏כל ה-server tests ‏ירוקים
 ```
-+ ‏manual: ‏הרץ ‏שרת, ‏טען vault, ‏וודא ‏ש-obsidian-web-layout (‏שב-src/plugins) ‏עדיין ‏מופיע (‏לא ‏רגרסיה).
+
+- ‏manual: ‏הרץ ‏שרת, ‏טען vault, ‏וודא ‏ש-obsidian-web-layout (‏שב-src/plugins) ‏עדיין ‏מופיע (‏לא ‏רגרסיה).
 
 ---
 
 ### Commit 1 — scripts/install-livesync.js (approach: **manual** + integration ‏על ‏ה-parse)
 
 **‏קובץ חדש**: `scripts/install-livesync.js` — ‏מודל ‏על `scripts/update-obsidian-mobile.js`:
+
 - `https` ‏(לא fetch), `withRetries`, cache ‏ב-`.tmp/cache/livesync-releases/`.
 - ‏שלב ‏את ‏release metadata ‏מ-`https://api.github.com/repos/vrtmrz/obsidian-livesync/releases/latest`
   (‏או `--version <tag>`). Header `User-Agent` ‏חובה ל-GitHub API.
@@ -152,49 +158,57 @@ node --test test/   # ‏כל ה-server tests ‏ירוקים
   **‏fail loud** ‏אם asset ‏חסר (‏ראה pitfall — ‏שם ה-asset ‏יכול ‏להשתנות upstream).
 - ‏כתוב ‏ל-`vendor/plugins/obsidian-livesync/` (‏צור ‏את ‏התיקייה; `vendor/` ‏כבר ‏gitignored).
 - ‏אחרי ‏ההורדה, ‏צור `data.json` ‏מינימלי ‏ליד ‏ה-manifest:
+
   ```json
-  { "version": "<מ-manifest>", "remote_type": "couchdb",
-    "_obsidian_web_note": "Configure your CouchDB URI in the LiveSync settings tab." }
+  {
+    "version": "<מ-manifest>",
+    "remote_type": "couchdb",
+    "_obsidian_web_note": "Configure your CouchDB URI in the LiveSync settings tab."
+  }
   ```
+
   (‏אם ‏כבר ‏קיים `data.json` — ‏אל ‏תדרוס, ‏אלא ‏אם `--force`.)
+
 - CLI: `node scripts/install-livesync.js [--version <tag>] [--force]`.
 
 **Verification** (manual):
+
 ```bash
 node scripts/install-livesync.js
 ls vendor/plugins/obsidian-livesync/   # main.js, manifest.json, [styles.css], data.json
 git check-ignore vendor/plugins/obsidian-livesync/main.js   # ‏מאומת ‏gitignored
 ```
-+ ‏אם ‏אפשר ‏unit על ‏ה-asset-pick logic (‏טהור) ‏מול JSON ‏release ‏מדומה.
+
+- ‏אם ‏אפשר ‏unit על ‏ה-asset-pick logic (‏טהור) ‏מול JSON ‏release ‏מדומה.
 
 ---
 
 ## §5 — DoD verifiable
 
-| # | ‏בדיקה | ‏איך |
-|---|------|------|
-| 1 | server tests ‏ירוקים ‏(כולל ‏overlay ‏החדש) | `cd src/server && node --test test/` |
-| 2 | overlay ‏טוען ‏משתי ‏התיקיות | טסט: ‏plugin ב-src/plugins **‏וגם** ‏ב-vendor/plugins ‏נטענים, getSystemPluginDir ‏מחזיר ‏נכון |
-| 3 | ‏לא ‏רגרסיה: obsidian-web-layout ‏עדיין ‏מוגש | ‏טען vault → ‏הפלאגין ‏שלנו ‏עדיין ‏מופיע/‏עובד |
-| 4 | install-livesync ‏מוריד ‏ל-vendor/plugins | `ls vendor/plugins/obsidian-livesync/` → main.js+manifest.json+data.json |
-| 5 | ‏הפלאגין ‏gitignored ‏(לא ‏בגיט) | `git check-ignore vendor/plugins/obsidian-livesync/main.js` → ‏מודפס; `git status` ‏נקי ‏מהפלאגין |
-| 6 | ‏אחרי ‏הרצה+טעינה, LiveSync ‏מוגש | `curl …/api/fs/read?…path=.obsidian/plugins/obsidian-livesync/main.js` → ‏מחזיר ‏את ‏הקובץ ‏מ-vendor/plugins (‏overlay) |
-| 7 | `--force` ‏מעדכן; ‏בלי ‏force ‏לא ‏דורס data.json | ‏הרץ ‏פעמיים |
-| 8 | walkthrough entry | `docs/walkthrough.md` |
-| 9 | **‏אין commits** (‏גם ‏לא ‏הפלאגין — ‏gitignored) | ‏מרדכי |
+| #   | ‏בדיקה                                            | ‏איך                                                                                                                    |
+| --- | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| 1   | server tests ‏ירוקים ‏(כולל ‏overlay ‏החדש)       | `cd src/server && node --test test/`                                                                                    |
+| 2   | overlay ‏טוען ‏משתי ‏התיקיות                      | טסט: ‏plugin ב-src/plugins **‏וגם** ‏ב-vendor/plugins ‏נטענים, getSystemPluginDir ‏מחזיר ‏נכון                          |
+| 3   | ‏לא ‏רגרסיה: obsidian-web-layout ‏עדיין ‏מוגש     | ‏טען vault → ‏הפלאגין ‏שלנו ‏עדיין ‏מופיע/‏עובד                                                                         |
+| 4   | install-livesync ‏מוריד ‏ל-vendor/plugins         | `ls vendor/plugins/obsidian-livesync/` → main.js+manifest.json+data.json                                                |
+| 5   | ‏הפלאגין ‏gitignored ‏(לא ‏בגיט)                  | `git check-ignore vendor/plugins/obsidian-livesync/main.js` → ‏מודפס; `git status` ‏נקי ‏מהפלאגין                       |
+| 6   | ‏אחרי ‏הרצה+טעינה, LiveSync ‏מוגש                 | `curl …/api/fs/read?…path=.obsidian/plugins/obsidian-livesync/main.js` → ‏מחזיר ‏את ‏הקובץ ‏מ-vendor/plugins (‏overlay) |
+| 7   | `--force` ‏מעדכן; ‏בלי ‏force ‏לא ‏דורס data.json | ‏הרץ ‏פעמיים                                                                                                            |
+| 8   | walkthrough entry                                 | `docs/walkthrough.md`                                                                                                   |
+| 9   | **‏אין commits** (‏גם ‏לא ‏הפלאגין — ‏gitignored) | ‏מרדכי                                                                                                                  |
 
 ---
 
 ## §6 — Risks + mitigations
 
-| ‏סיכון | ‏מקור | ‏מיטיגציה |
-|------|------|----------|
-| `fs.js:253` ‏לא ‏מתוקן → ‏plugin ב-vendor/plugins ‏לא ‏מוגש ‏ב-readdir | overlay ‏refactor | ‏DoD #6 ‏(read ‏ישיר) + ‏בדיקת readdir ‏על ‏plugin ‏מ-vendor/plugins |
-| ‏`vendor/plugins` ‏לא ‏קיים ‏ב-init (‏לפני ‏הרצת ‏הסקריפט) | ‏סדר | init ‏מטפל ‏ב-ENOENT ‏בחן ‏(warn+continue), ‏כמו ‏היום ‏ל-src/plugins |
-| ‏שם ה-asset ‏ב-release ‏משתנה upstream (tarball ‏וכו') | plan pitfall #8 | **fail loud** ‏על asset-not-found; ‏לא ‏לנחש |
-| GitHub API rate-limit ‏ללא ‏User-Agent/token | ‏רשת | `User-Agent` header ‏חובה; cache ‏ב-.tmp; ‏הודעת ‏שגיאה ‏ברורה |
-| ‏id ‏כפול ‏בין ‏שתי ‏התיקיות | overlay | `src/plugins` ‏מנצח (‏override ‏שלנו) + warn — ‏מתועד ‏ב-§4 |
-| ‏deploy: vendor/plugins ‏לא ‏ב-git archive | (‏מחוץ ל-slice) | ‏מרדכי ‏יזכור — ‏rsync ‏נפרד ‏ב-deploy ‏כמו `vendor/` (‏לא ‏חלק ‏מה-slice) |
+| ‏סיכון                                                                 | ‏מקור             | ‏מיטיגציה                                                                  |
+| ---------------------------------------------------------------------- | ----------------- | -------------------------------------------------------------------------- |
+| `fs.js:253` ‏לא ‏מתוקן → ‏plugin ב-vendor/plugins ‏לא ‏מוגש ‏ב-readdir | overlay ‏refactor | ‏DoD #6 ‏(read ‏ישיר) + ‏בדיקת readdir ‏על ‏plugin ‏מ-vendor/plugins       |
+| ‏`vendor/plugins` ‏לא ‏קיים ‏ב-init (‏לפני ‏הרצת ‏הסקריפט)             | ‏סדר              | init ‏מטפל ‏ב-ENOENT ‏בחן ‏(warn+continue), ‏כמו ‏היום ‏ל-src/plugins      |
+| ‏שם ה-asset ‏ב-release ‏משתנה upstream (tarball ‏וכו')                 | plan pitfall #8   | **fail loud** ‏על asset-not-found; ‏לא ‏לנחש                               |
+| GitHub API rate-limit ‏ללא ‏User-Agent/token                           | ‏רשת              | `User-Agent` header ‏חובה; cache ‏ב-.tmp; ‏הודעת ‏שגיאה ‏ברורה             |
+| ‏id ‏כפול ‏בין ‏שתי ‏התיקיות                                           | overlay           | `src/plugins` ‏מנצח (‏override ‏שלנו) + warn — ‏מתועד ‏ב-§4                |
+| ‏deploy: vendor/plugins ‏לא ‏ב-git archive                             | (‏מחוץ ל-slice)   | ‏מרדכי ‏יזכור — ‏rsync ‏נפרד ‏ב-deploy ‏כמו `vendor/` (‏לא ‏חלק ‏מה-slice) |
 
 > ‏3 ‏שנשכחים: (1) path-traversal guard ‏ב-tryGetSystemFilePath ‏חייב ‏להישאר ‏אחרי ‏המעבר ‏ל-Map.
 > (2) ‏`getSystemPluginIds()` ‏API ‏לא ‏משתנה (‏צרכנים ‏ב-fs.js ‏סומכים ‏עליו). (3) ‏מחרוזות-לוג ‏בעברית/i18n — ‏לא ‏רלוונטי ‏פה.
@@ -212,16 +226,16 @@ git check-ignore vendor/plugins/obsidian-livesync/main.js   # ‏מאומת ‏g
 
 ## §8 — Complexity score + verifier tier
 
-| ‏פרמטר | ‏ניקוד |
-|------|------|
-| Refactor ‏של ‏קוד ‏קיים (Set→Map, 2 ‏call-sites) | +1 |
-| ‏ספרייה ‏חיצונית ‏חדשה | 0 (‏רק `https` ‏stdlib) |
-| ‏רשת/IO (download) | +1 |
-| >5 files? (‏3 ‏קבצים) | 0 |
-| Pure logic ‏בחלק (overlay Map, asset-pick) | -1 |
-| Greenfield ‏(הסקריפט ‏חדש, ‏אין ‏call-sites ‏לשבור) | -1 |
-| ‏overlay ‏הוא ‏נתיב ‏קריטי ‏(כל ‏קריאת ‏פלאגין ‏עוברת ‏בו) | +2 |
-| ‏שדרת ‏פלאגינים ‏עתידיים ‏תלויה ‏בקונבנציה | +2 |
+| ‏פרמטר                                                     | ‏ניקוד                  |
+| ---------------------------------------------------------- | ----------------------- |
+| Refactor ‏של ‏קוד ‏קיים (Set→Map, 2 ‏call-sites)           | +1                      |
+| ‏ספרייה ‏חיצונית ‏חדשה                                     | 0 (‏רק `https` ‏stdlib) |
+| ‏רשת/IO (download)                                         | +1                      |
+| >5 files? (‏3 ‏קבצים)                                      | 0                       |
+| Pure logic ‏בחלק (overlay Map, asset-pick)                 | -1                      |
+| Greenfield ‏(הסקריפט ‏חדש, ‏אין ‏call-sites ‏לשבור)        | -1                      |
+| ‏overlay ‏הוא ‏נתיב ‏קריטי ‏(כל ‏קריאת ‏פלאגין ‏עוברת ‏בו) | +2                      |
+| ‏שדרת ‏פלאגינים ‏עתידיים ‏תלויה ‏בקונבנציה                 | +2                      |
 
 **Score**: **4 / 10**
 
@@ -231,11 +245,11 @@ git check-ignore vendor/plugins/obsidian-livesync/main.js   # ‏מאומת ‏g
 
 ## §9 — ‏שאלות פתוחות
 
-| # | ‏שאלה | ‏ברירת מחדל | ‏חוסם? |
-|---|------|----------|------|
-| 1 | precedence ‏על id ‏כפול | `src/plugins` ‏מנצח | ❌ |
-| 2 | ‏האם ‏לאחסן ‏cache ‏של ‏ה-release ‏ב-.tmp ‏(כמו update-obsidian) | ‏כן | ❌ |
-| 3 | data.json ‏ברירת-מחדל — ‏שדות ‏מינימליים ‏או ‏ריק | ‏מינימלי ‏(§4) | ❌ |
+| #   | ‏שאלה                                                            | ‏ברירת מחדל         | ‏חוסם? |
+| --- | ---------------------------------------------------------------- | ------------------- | ------ |
+| 1   | precedence ‏על id ‏כפול                                          | `src/plugins` ‏מנצח | ❌     |
+| 2   | ‏האם ‏לאחסן ‏cache ‏של ‏ה-release ‏ב-.tmp ‏(כמו update-obsidian) | ‏כן                 | ❌     |
+| 3   | data.json ‏ברירת-מחדל — ‏שדות ‏מינימליים ‏או ‏ריק                | ‏מינימלי ‏(§4)      | ❌     |
 
 ---
 

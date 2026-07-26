@@ -22,6 +22,7 @@
 - **אין שינוי ל-`opfs-store.js`** — נשאר GO ללא נגיעה, כפי שהבריף קבע (§2).
 
 **אימות (integration, בפועל — לא רק syntax)**:
+
 - syntax תקין: `vm.Script` על הקובץ (bun's `node --check`/`node -c` לא עובד נכון בסביבה זו — מריץ את ה-IIFE בפועל ונכשל על `window is not defined` ברמת top-level; זה קיים גם ב-baseline, לא syntax error אמיתי — תועד כבר ב-thread הקודם).
 - `bun test src/client-mobile/test/`: **21/21 ירוקים** (ללא רגרסיה).
 - **E2E אמיתי בדפדפן (playwright chromium, לא simulation/monkeypatch — התיקון האמיתי ב-capacitor-shim.js)**, מול שרת אמיתי (`PORT=4030 node index.js`):
@@ -41,16 +42,16 @@ walkthrough entry זה + עדכון סטטוס בבריף ל-"הושלם".
 
 #### DoD verifiable (§5 בבריף) — מצב אחרי Commits 0-1
 
-| # | סטטוס | הערה |
-|---|------|------|
-| 1 | ✅ | workspace מלא, `window.app` קיים, אין onboarding — ראה למעלה |
-| 2 | ✅ | file explorer עם קבצים/תיקיות מקוננים |
-| 3 | ✅ | `vaults/<id>/Notes/sub/hello.md` — לא double-nested |
-| 4 | ✅ | 0 קריאות `/api/fs` ל-local vault |
-| 5 | ✅ | server vault רגרסיה — workspace עולה, `/api/fs` פעיל |
-| 6 | ✅ | `opfs-store.selftest.html` — ALL PASS (23) |
-| 7 | ✅ | `bun test src/client-mobile/test/` — 21/21 |
-| 8 | ✅ | `git diff --name-only opfs-geturi-fix..HEAD` — רק `capacitor-shim.js` + `docs/walkthrough.md` + `docs/plans/opfs-vault-path.md` (סטטוס) |
+| #   | סטטוס | הערה                                                                                                                                    |
+| --- | ----- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | ✅    | workspace מלא, `window.app` קיים, אין onboarding — ראה למעלה                                                                            |
+| 2   | ✅    | file explorer עם קבצים/תיקיות מקוננים                                                                                                   |
+| 3   | ✅    | `vaults/<id>/Notes/sub/hello.md` — לא double-nested                                                                                     |
+| 4   | ✅    | 0 קריאות `/api/fs` ל-local vault                                                                                                        |
+| 5   | ✅    | server vault רגרסיה — workspace עולה, `/api/fs` פעיל                                                                                    |
+| 6   | ✅    | `opfs-store.selftest.html` — ALL PASS (23)                                                                                              |
+| 7   | ✅    | `bun test src/client-mobile/test/` — 21/21                                                                                              |
+| 8   | ✅    | `git diff --name-only opfs-geturi-fix..HEAD` — רק `capacitor-shim.js` + `docs/walkthrough.md` + `docs/plans/opfs-vault-path.md` (סטטוס) |
 
 #### בדיקות
 
@@ -70,18 +71,22 @@ walkthrough entry זה + עדכון סטטוס בבריף ל-"הושלם".
 תיקון F1+F2 שנמצאו ב-calev-heavy סבב 3 (PARTIAL): מוטציות תיקיות (mkdir, rename-dir) לא ייצרו payload תקין ב-bootstrap הבא.
 
 **F1 — `updateEntryFile` מתייג תיקייה כ-isFile:true (bootstrap.js, fs.js)**:
+
 - `/mkdir` קרא ל-`invalidateEntry({removed:false})` → `updateEntryFile` → `isFile:true` על ה-entry. עם `isText=false`, ה-entry לא נכנס לfs בכלל (חסר).
 - `/rename` עם יעד תיקייה: סטאט newPath → `isDirectory=true`, אבל קרא ל-`updateEntryFile` שלא יודע לטפל בתיקיות.
 
 **F2 — `_refreshDirMtimes` מסתיר את ה-MISS (bootstrap.js)**:
+
 - `_refreshDirMtimes` (fire-and-forget) מרענן `dirMtimes[parent]` ל-mtime הנכון → Phase 3 לא מגלה changedDir → תיקייה חדשה/ששונתה לא נבנית.
 
 **הפתרון — `isDir: true` flag ב-`invalidateEntry`**:
+
 - כש-`isDir=true`: לא קורא `updateEntryFile` (F1). כופה `entry.dirMtimes[parent] = 0` (stale sentinel) — Phase 3 מוצא changedDir ובונה את הסאבטרי נכון (F2).
 - Guard ב-`_refreshDirMtimes`: אם `dirMtimes[dir] === 0`, לא דורס (שומר את ה-stale).
 - **סדר קריאות ב-rename-dir חיוני**: `invalidateEntry(newRel, {isDir:true})` תחילה (מכפה `=0`), ואחר כך `invalidateEntry(oldRel, {removed:true})` (fire-and-forget של `_refreshDirMtimes` יבדוק guard ויוותר).
 
 **call-sites שעודכנו**:
+
 - `/mkdir` (fs.js): `{removed:false}` → `{isDir:true}`.
 - `/rename` (fs.js): אם `renamedIsDirectory` → `invalidateEntry(newRel,{isDir:true})` ואז `invalidateEntry(oldRel,{removed:true})`; אחרת — התנהגות הקובץ הקיימת.
 - `/rmdir`, `/unlink`, `/copy` (קבצים), electron `/trash` — **לא השתנו** (removal קיים עובד, copy רק קבצים).
@@ -89,6 +94,7 @@ walkthrough entry זה + עדכון סטטוס בבריף ל-"הושלם".
 ### טסטים חדשים (TDD — 4 חדשים)
 
 `test/bootstrap-dir-mutations.test.js`:
+
 - `mkdir → isDirectory:true` + זהה ל-full re-scan.
 - `mkdir + write-inside → file עם content`.
 - `rename-dir-with-children → old gone, new subtree, identical to full`.
@@ -115,12 +121,14 @@ walkthrough entry זה + עדכון סטטוס בבריף ל-"הושלם".
 3 תיקוני correctness שנמצאו ב-calev-heavy סבב 2 ועל-ידי סוכן חקירה עצמאי:
 
 **תיקון 1 — ביטול async מ-invalidateEntry (bootstrap.js:692)**:
+
 - הפיכת `invalidateEntry` ל-`async` (סבב fix קודם, תיקון NBug2) גרמה latency על כל כתיבה על rclone mount.
 - Phase 3 (incremental rebuild) כבר מכסה dir-mtime parity בחינם — ביטלנו את ה-await.
 - `invalidateEntry` חזרה לsync. `_refreshDirMtimes` נשאר fire-and-forget (best-effort).
 - הוסר `await` מ-7 call-sites ב-`fs.js` ומ-`electron.js`. ה-wrappers הפכו sync.
 
 **תיקון 2 — gate isText ב-updateEntryFile + תיקון /copy (bootstrap-invalidate.js, fs.js)**:
+
 - `updateEntryFile` לא בדק isText — בינארי/oversized נכנס ל-`fs` בניגוד ל-walkDir.
 - הוספנו flag `isText` (מועבר מה-call-site): `isText=true` → עדכון fs עם content; `isText=false/undefined` → עדכון dirs בלבד.
 - `/copy` (fs.js) פוספס בתיקון NBug1: עכשיו עושה stat+readFile של dest כמו rename.
@@ -128,6 +136,7 @@ walkthrough entry זה + עדכון סטטוס בבריף ל-"הושלם".
 - `isTextInLimit()` helper חדש ב-fs.js (mirrors TEXT_EXTENSIONS+MAX_CONTENT_BYTES מbootstrap.js).
 
 **תיקון 3 — חלון ה-br/gzip (bootstrap.js)**:
+
 - לקוח עם `Accept-Encoding: br` בתוך ה-250ms debounce קיבל buffer ישן.
 - הוספנו `entry.compressedStale = true` ב-`scheduleRecompress` (מיידי), נמחק ל-`false` אחרי build buffer.
 - ב-HIT path: אם `compressedStale` → מדלגים על buffer הדחוס, `res.json(entry.response)` (compression middleware מכווץ on-the-fly).
@@ -158,16 +167,19 @@ walkthrough entry זה + עדכון סטטוס בבריף ל-"הושלם".
 שני תיקוני correctness שמצא calev-heavy (PARTIAL verdict) — הפרת "payload זהה ל-full re-scan" (DoD#7):
 
 **NBug1 — rename מאבד content ומאפס stat (fs.js `/rename`)**:
+
 - ה-WIP ניסה לקחת content/size/mtime מה-entry הישן ב-cache — אבל הסדר היה שגוי (מחיקת הentry לפני הקריאה), ובנוסף זה כשל אם הקובץ לא היה ב-cache (oversized/binary).
 - הפתרון: re-stat+readFile של `newPath` מהדיסק אחרי ה-rename (כמפורט ב-brief §4 Commit 1). TEXT_LIMIT guard זהה ל-bootstrap.js.
 
 **NBug2 — dir-mtime stale ב-dirs[parent] אחרי add (bootstrap.js + fs.js + electron.js)**:
+
 - `_refreshDirMtimes` עדכן payload אבל היה fire-and-forget — bootstrap HIT שהגיע לפני שה-stat הסתיים קיבל mtime ישן.
 - הפתרון: `invalidateEntry` הפך async ומ-await ל-`_refreshDirMtimes`. כך route handlers מחכים לסיום הrefresh לפני שמחזירים 200.
 - `_refreshDirMtimes` גם קורא `scheduleRecompress` אחרי עדכון.
 - כל call sites ב-`fs.js` ו-`electron.js` עודכנו ל-`await invalidateEntry(...)` (חוץ מ-write-coalesce path).
 
 **2 regression guard tests** (`test/bootstrap-incremental.test.js`):
+
 - `surgical rename: new path has content/size/mtime (NBug1 regression guard)`
 - `surgical add: parent dirs listing has updated dir mtime (NBug2 regression guard)`
 
@@ -189,6 +201,7 @@ walkthrough entry זה + עדכון סטטוס בבריף ל-"הושלם".
 ### מה בוצע
 
 ה-Phase הסופי של ה-slice. הוסיף ענף **incremental rebuild** ב-`_buildCacheEntry`:
+
 - כש-`cached && changedDirs.length > 0 && cached.isFull === full` — בונה רק את התיקיות שהשתנו במקום full re-scan.
 - לכל `relDir` ב-`changedDirs`: readdir → diff → prune למחיקות, `walkDir` לתת-תיקיות חדשות, `readFile` לקבצים חדשים/שונים, עדכון `dirs[relDir]` + `dirMtimes[relDir]` + `fsCache[relDir].size/mtime`.
 - `entry.vaultRoot = vaultRoot` נשמר ב-entry לשימוש `_refreshDirMtimes`.
@@ -196,6 +209,7 @@ walkthrough entry זה + עדכון סטטוס בבריף ל-"הושלם".
 - ניקוי dead code ב-`invalidateEntry` (WIP שנשאר אחרי reboot).
 
 **Integration tests חדשים** (`test/bootstrap-incremental.test.js`, 5 טסטים):
+
 - add file / delete file / rename file → correctness vs full re-scan.
 - spy על readdir → מאמת שרק changedDirs נסרקו.
 - HIT אחרי incremental rebuild.
@@ -214,6 +228,7 @@ walkthrough entry זה + עדכון סטטוס בבריף ל-"הושלם".
 **Live URL (pico tuns.sh, דטרמיניסטי):** https://<your-tunnel>.tuns.sh
 
 **מסמכים נוספים:**
+
 - [`PLAN.md`](../PLAN.md) - תכנון בן 5 פאזות.
 - [`docs/investigations.md`](./investigations.md) - חקירות עומק לבעיות. **קרא לפני שחוקרים בעיה ידועה.**
 
@@ -227,11 +242,11 @@ walkthrough entry זה + עדכון סטטוס בבריף ל-"הושלם".
 
 ביצועים נמדדים על vault `009428c4` (394 קבצים, 68 תיקיות מקוננות, נתיב על rclone-mount של Google Drive):
 
-| תרחיש | זמן ל-`workspace.layoutReady && metadataCache.inProgressTaskCount === 0` |
-|---|---|
-| Cold + `BOOTSTRAP_DISABLED=true` | 22.6s, 22.7s (mean 22.65s) |
-| Cold + bootstrap enabled       | 6.9s, 2.7s (mean 4.8s) |
-| Warm + bootstrap enabled       | 1.9s, 2.1s |
+| תרחיש                            | זמן ל-`workspace.layoutReady && metadataCache.inProgressTaskCount === 0` |
+| -------------------------------- | ------------------------------------------------------------------------ |
+| Cold + `BOOTSTRAP_DISABLED=true` | 22.6s, 22.7s (mean 22.65s)                                               |
+| Cold + bootstrap enabled         | 6.9s, 2.7s (mean 4.8s)                                                   |
+| Warm + bootstrap enabled         | 1.9s, 2.1s                                                               |
 
 **הפחתה של 79%** לעומת disabled cold (יעד התוכנית: ≥60%). ב-warm server ל-2s בדיוק.
 
@@ -367,6 +382,7 @@ README.md  PLAN.md  .gitignore
 #### `.gitignore` הראשי הופשט
 
 מ-31 שורות ל-15:
+
 ```gitignore
 # Vendor — extracted Obsidian bundles (regeneratable via scripts/update-obsidian.js)
 vendor/
@@ -393,27 +409,27 @@ docs/
 
 #### קבצים שעודכנו
 
-| קובץ | שינוי |
-|---|---|
-| `src/server/config.js` | PROJECT_ROOT עולה 2 רמות; paths חדשים (`src/client`, `vendor/obsidian`, וכו'); ברירות מחדל ל-`user-data/{demo-vault,registry.json}`; `obsidianMobilePath` הוסף כ-config var נפרד. |
-| `src/server/index.js` | משתמש ב-`appConfig.clientMobilePath` ו-`appConfig.obsidianMobilePath` במקום path.join עם projectRoot. |
-| `scripts/update-obsidian.js` | TARGET_DIR → `vendor/obsidian/`; CACHE_DIR + EXTRACT_WORKDIR → `.tmp/`. |
-| `scripts/update-obsidian-mobile.js` | TARGET_DIR → `vendor/obsidian-mobile/`; CACHE_DIR → `.tmp/cache/`. |
-| `src/deployments/cloudflare/wrangler.toml` | `main = "index.js"` (flatten); assets directory → `../../../.tmp/deployments/cloudflare/public`. |
-| `src/deployments/cloudflare/scripts/build-assets.sh` | MAIN_DIR עכשיו 3 רמות; קלט מ-src/client + vendor/obsidian; פלט ל-.tmp/. |
-| `src/deployments/cloudflare/.gitignore` | תיקון path של `plugins-generated.js` אחרי flatten. |
-| `user-data/registry.json` | path של demo-vault עודכן מ-`test-vault`. |
-| `README.md` | section חדש של repo layout + עדכון כל הפקודות (`cd src/server`, `cd src/deployments/cloudflare`). |
-| `PLAN.md` | architecture diagram + טבלת files עדכניים. |
+| קובץ                                                 | שינוי                                                                                                                                                                             |
+| ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/server/config.js`                               | PROJECT_ROOT עולה 2 רמות; paths חדשים (`src/client`, `vendor/obsidian`, וכו'); ברירות מחדל ל-`user-data/{demo-vault,registry.json}`; `obsidianMobilePath` הוסף כ-config var נפרד. |
+| `src/server/index.js`                                | משתמש ב-`appConfig.clientMobilePath` ו-`appConfig.obsidianMobilePath` במקום path.join עם projectRoot.                                                                             |
+| `scripts/update-obsidian.js`                         | TARGET_DIR → `vendor/obsidian/`; CACHE_DIR + EXTRACT_WORKDIR → `.tmp/`.                                                                                                           |
+| `scripts/update-obsidian-mobile.js`                  | TARGET_DIR → `vendor/obsidian-mobile/`; CACHE_DIR → `.tmp/cache/`.                                                                                                                |
+| `src/deployments/cloudflare/wrangler.toml`           | `main = "index.js"` (flatten); assets directory → `../../../.tmp/deployments/cloudflare/public`.                                                                                  |
+| `src/deployments/cloudflare/scripts/build-assets.sh` | MAIN_DIR עכשיו 3 רמות; קלט מ-src/client + vendor/obsidian; פלט ל-.tmp/.                                                                                                           |
+| `src/deployments/cloudflare/.gitignore`              | תיקון path של `plugins-generated.js` אחרי flatten.                                                                                                                                |
+| `user-data/registry.json`                            | path של demo-vault עודכן מ-`test-vault`.                                                                                                                                          |
+| `README.md`                                          | section חדש של repo layout + עדכון כל הפקודות (`cd src/server`, `cd src/deployments/cloudflare`).                                                                                 |
+| `PLAN.md`                                            | architecture diagram + טבלת files עדכניים.                                                                                                                                        |
 
 #### פקודות שהשתנו
 
-| פעולה | היום | אחרי |
-|---|---|---|
-| הפעלת השרת | `node server/index.js` | `node src/server/index.js` |
-| Build cloudflare | `cd cf && npm run build` | `cd src/deployments/cloudflare && npm run build` |
-| Deploy cloudflare | `cd cf && npm run deploy` | `cd src/deployments/cloudflare && npm run deploy` |
-| Update obsidian (desktop+mobile) | `node scripts/update-obsidian.js`, `node scripts/update-obsidian-mobile.js` | (לא משתנה) |
+| פעולה                            | היום                                                                        | אחרי                                              |
+| -------------------------------- | --------------------------------------------------------------------------- | ------------------------------------------------- |
+| הפעלת השרת                       | `node server/index.js`                                                      | `node src/server/index.js`                        |
+| Build cloudflare                 | `cd cf && npm run build`                                                    | `cd src/deployments/cloudflare && npm run build`  |
+| Deploy cloudflare                | `cd cf && npm run deploy`                                                   | `cd src/deployments/cloudflare && npm run deploy` |
+| Update obsidian (desktop+mobile) | `node scripts/update-obsidian.js`, `node scripts/update-obsidian-mobile.js` | (לא משתנה)                                        |
 
 #### וריפיקציה
 
@@ -482,6 +498,7 @@ Ex = function(e, t) {
 #### בעיית-המשך: click handler משתמש ב-`electron`
 
 ה-click handler על ה-vault-switcher (בתוך אותו בלוק):
+
 ```js
 e.addEventListener("click", function(t) {
   if (!e.hasClass("has-active-menu")) {
@@ -495,26 +512,30 @@ e.addEventListener("click", function(t) {
 **פתרון (`client-mobile/boot.js`):** capture-phase event listener שתופס את הקליק לפני ה-handler המקורי ומנווט ל-`/starter` (שכבר תומך בכל הפונקציונליות + יותר):
 
 ```js
-document.addEventListener('click', function (e) {
-  var target = e.target.closest('.workspace-drawer-vault-switcher');
-  if (!target) return;
-  e.stopImmediatePropagation();
-  e.preventDefault();
-  location.href = '/starter';
-}, true);
+document.addEventListener(
+  "click",
+  function (e) {
+    var target = e.target.closest(".workspace-drawer-vault-switcher");
+    if (!target) return;
+    e.stopImmediatePropagation();
+    e.preventDefault();
+    location.href = "/starter";
+  },
+  true,
+);
 ```
 
 ה-⚙ ו-? עובדים native כי הם קוראים ל-`app.setting.open()` ו-`app.openHelp()` — API פנימי של אובסידיאן, לא electron.
 
 #### וריפיקציה ב-gui-host (obsmobile, port 9224)
 
-| תרחיש | תוצאה |
-|---|---|
-| test-vault, desktop layout (viewport 1001x1142, auto) | ✅ פאנל מופיע: `⌄ 5b68fb93d875ad63 ? ⚙` |
-| test-vault, mobile layout (`layout-mode=mobile`) | ✅ פאנל desktop מוסתר, mobile header (pin+⚙) מופיע |
-| Large vault (009428c4, 394 קבצים, 68 תיקיות) | ✅ פאנל מופיע, ה-fix של watchAndStatAll מאתמול ממשיך לעבוד |
-| Click on ⚙ | ✅ Settings modal נפתח |
-| Click on vault dropdown | ✅ ניווט ל-/starter (לא ReferenceError) |
+| תרחיש                                                 | תוצאה                                                      |
+| ----------------------------------------------------- | ---------------------------------------------------------- |
+| test-vault, desktop layout (viewport 1001x1142, auto) | ✅ פאנל מופיע: `⌄ 5b68fb93d875ad63 ? ⚙`                    |
+| test-vault, mobile layout (`layout-mode=mobile`)      | ✅ פאנל desktop מוסתר, mobile header (pin+⚙) מופיע         |
+| Large vault (009428c4, 394 קבצים, 68 תיקיות)          | ✅ פאנל מופיע, ה-fix של watchAndStatAll מאתמול ממשיך לעבוד |
+| Click on ⚙                                            | ✅ Settings modal נפתח                                     |
+| Click on vault dropdown                               | ✅ ניווט ל-/starter (לא ReferenceError)                    |
 
 32 errors בקונסול קיימים מראש (B-004: 404 על קבצי `.obsidian/*.json` אופציונליים שאובסידיאן בודק) — לא קשורים לתיקון.
 
@@ -560,10 +581,13 @@ document.addEventListener('click', function (e) {
 
 - **תסמין**: vault עם תיקיות מקוננות הראה את שמות התיקיות אבל בלי תוכן ב-file explorer.
 - **שורש הבעיה**: `CapacitorAdapter` ב-bundle של obsidian-mobile עובד כך:
+
   ```js
   for (const i of e.children) this.quickList("", i);
   ```
+
   לולאה אחת על `e.children` של השורש. **`quickList` לא יורד רקורסיבית** לתוך `entry.children`. הוא משתמש ב-`entry.name` כנתיב היחסי **המלא**.
+
 - **טעות תיאוריה ראשונה**: בסשן שיערו ראשונה ש-`children: []` ריק הוא הבעיה ובנו עץ רקורסיבי עם `children: [...]` בכל תיקייה. גם זה לא עבד — Obsidian פשוט לא רקורסבי.
 - **הפתרון האמיתי**: להחזיר רשימה **שטוחה** של כל ה-entries (גם תיקיות וגם קבצים) כש-`name` הוא **הנתיב היחסי המלא** מהשורש (`"10. פרויקטים/foo.md"`). הקוד עכשיו מאיטר את `dirs` של ה-bootstrap כולו ובונה רשימה שטוחה.
 - **למה זה לא נתפס קודם**: `test-vault` כולל קבצים בשורש בלבד. כל הבדיקות ב-walkthrough של 11/5 רצו עליה. ה-vault האמיתי (`<your-vault>`) היה הראשון שחשף את הבאג.
@@ -583,6 +607,7 @@ document.addEventListener('click', function (e) {
 **6. תיקון תוכנית local-vaults לאור הבאג**
 
 הגרסה הראשונית של `local-vaults-implementation.md` (שנכתבה לפני שניתחנו את הסשן של 06:31) אמרה ש-`watchAndStatAll` צריך להחזיר עץ עם top-level children בלבד ו-"Obsidian recursively expands as it reads". זה **שגוי לחלוטין**. תיקנתי:
+
 - ה-method-by-method note עכשיו מציין במפורש: רשימה שטוחה עם נתיבים יחסיים מלאים, ולא עץ.
 - skeleton של `walkTree` עם רקורסיה ועירוף ל-`children` הראשי.
 - acceptance test של Phase 1 כולל בדיקה ספציפית של flat-list על subdirectory עמוקה (`A/B/C/deep.md`).
@@ -623,6 +648,7 @@ document.addEventListener('click', function (e) {
 **1. עדכון `docs/investigations.md` (+390 שורות)**
 
 נוספו 6 anchors חדשים:
+
 - `#glossary` — מילון: שלוש משמעויות של "plugin" (Capacitor plugin, Obsidian plugin, system plugin)
 - `#current-state` — תמונת מצב נכון ל-2026-05-11 (mobile runtime + system overlay + layout switcher)
 - `#pluginheaders` — מנגנון `c.PluginHeaders` ב-Capacitor: למה "App is not implemented on android" נזרק, ואיך מזריקים headers כדי לעקוף
@@ -647,6 +673,7 @@ document.addEventListener('click', function (e) {
 **4. עדכון `README.md` (+21 שורות)**
 
 הוספת subsection "Mobile bundle (`obsidian-mobile/`)" עם הוראות:
+
 - `node scripts/update-obsidian-mobile.js` להורדה + חילוץ + patches
 - ההסבר שעם הסקריפט הזה יש runtime mobile ב-`/mobile`
 
@@ -657,6 +684,7 @@ document.addEventListener('click', function (e) {
 **6. תיקון קוד: `createHash` ב-`client-mobile/boot.js`**
 
 ה-stub של `makeCryptoShim` הוחלף בגרסה האסינכרונית של `client/boot.js`. עכשיו:
+
 - `digest(encoding, cb)` עם callback → עובד אמיתי דרך `subtle.digest` (SHA-1/256/512)
 - `md5` → ממופה ל-SHA-256 (WebCrypto לא תומך MD5)
 - `digest(encoding)` sync — עדיין מחזיר ריק עם warning (אין WebCrypto sync)
@@ -690,12 +718,12 @@ LiveSync משתמשת ב-spark-md5 מ-bundle שלה + `subtle.digest` ישיר �
 
 #### ארכיטקטורה
 
-| רכיב | תפקיד |
-|---|---|
-| `plugins/obsidian-web-layout/` | מקור האמת לתוסף — `manifest.json` + `main.js` (CommonJS vanilla, ללא bundler). |
-| `server/system-plugins.js` | מודול חדש: סורק `<repo>/plugins/` ב-startup, חושף `tryGetSystemFilePath / getSystemPluginIds / mergeCommunityList / stripCommunityList`. |
-| `server/api/fs.js` | המנגנון המעשי. `/read`, `/stat`, `/readdir` נופלים-back ל-`<repo>/plugins/<id>/` כשהvault לא מחזיק את הקובץ; `/read` של `.obsidian/community-plugins.json` ממזג את הid שלנו ל-list; `/write` של אותו קובץ מסיר אותו לפני שמירה לדיסק. |
-| `server/index.js` | קורא `systemPlugins.init()` לפני `server.listen()`. ה-log מציג `Loaded 1 system plugins: obsidian-web-layout`. |
+| רכיב                           | תפקיד                                                                                                                                                                                                                                 |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `plugins/obsidian-web-layout/` | מקור האמת לתוסף — `manifest.json` + `main.js` (CommonJS vanilla, ללא bundler).                                                                                                                                                        |
+| `server/system-plugins.js`     | מודול חדש: סורק `<repo>/plugins/` ב-startup, חושף `tryGetSystemFilePath / getSystemPluginIds / mergeCommunityList / stripCommunityList`.                                                                                              |
+| `server/api/fs.js`             | המנגנון המעשי. `/read`, `/stat`, `/readdir` נופלים-back ל-`<repo>/plugins/<id>/` כשהvault לא מחזיק את הקובץ; `/read` של `.obsidian/community-plugins.json` ממזג את הid שלנו ל-list; `/write` של אותו קובץ מסיר אותו לפני שמירה לדיסק. |
+| `server/index.js`              | קורא `systemPlugins.init()` לפני `server.listen()`. ה-log מציג `Loaded 1 system plugins: obsidian-web-layout`.                                                                                                                        |
 
 הוקדמה לvault: מערכת מבדיקה תמיד את הvault קודם. אם המשתמש מניח קבצים תחת `.obsidian/plugins/obsidian-web-layout/` ב-vault שלו — הם מקבלים עדיפות (יידעו את אנשי הQA, מאפשר בדיקת overrides ידנית). ברירת המחדל: גרסת הריפו.
 
@@ -731,17 +759,18 @@ LiveSync משתמשת ב-spark-md5 מ-bundle שלה + `subtle.digest` ישיר �
 
 **2. שלושת ה-patches**
 
-| # | שם | מטרה |
-|---|---|---|
-| 1 | `expose-platform` | הוספת `window.__owPlatform = ...` לפני הצהרת אובייקט הPlatform כך שהוא נגיש מבחוץ |
-| 2 | `iife-overrides` | החלפת ההצבות הלא-מותנות `bn.isMobileApp=!0,...` ב-`Object.assign($1, defaults, window.__owPlatformOverrides||{})` — overrides מנצחים את ברירות המחדל |
-| 3 | `is-mobile-class` | מתנה את הוספת ה-class `is-mobile` ל-body בערך ה-post-override של `isMobile` |
+| #   | שם                | מטרה                                                                                                          |
+| --- | ----------------- | ------------------------------------------------------------------------------------------------------------- | --- | --------------------------------------- |
+| 1   | `expose-platform` | הוספת `window.__owPlatform = ...` לפני הצהרת אובייקט הPlatform כך שהוא נגיש מבחוץ                             |
+| 2   | `iife-overrides`  | החלפת ההצבות הלא-מותנות `bn.isMobileApp=!0,...` ב-`Object.assign($1, defaults, window.\_\_owPlatformOverrides |     | {})` — overrides מנצחים את ברירות המחדל |
+| 3   | `is-mobile-class` | מתנה את הוספת ה-class `is-mobile` ל-body בערך ה-post-override של `isMobile`                                   |
 
 כל patch בודק שיש בדיוק התאמה אחת ב-bundle. אם המינוף ישנה בעתיד את שם המשתנה (`bn` כיום) — הregex משתמש ב-backreferences וב-capture groups, אז זה ימשיך לעבוד; אם המבנה יזוז דרסטית, נקבל שגיאה מפורשת.
 
 **3. שילוב ב-`update-obsidian-mobile.js`**
 
 נוסף `applyPatches(...)` כשלב 5 — אחרי extract, לפני verify. ה-output החדש:
+
 ```
 Applying patches…
   patched: expose-platform (1x)
@@ -759,12 +788,12 @@ Applying patches…
 
 נבדק בדפדפן gui-host (port 9224, user-data-dir ייעודי `/tmp/pw-obsidian-mobile`):
 
-| תרחיש | viewport | overrides | תוצאה |
-|---|---|---|---|
-| ברירת מחדל, viewport רחב | 1001×1142 | `{isMobile:false}` | desktop UI — split panes, ribbon, sidebar קבוע. `bodyHasIsMobile=false`. |
-| `layout-mode=mobile` + reload | 1001×1142 | `{isMobile:true}` | mobile UI — hamburger toggle, mobile new-tab. `bodyHasIsMobile=true`. |
-| `layout-mode=desktop` + reload | 600×500 | `{isMobile:false}` | desktop UI נשמר גם ב-viewport קטן. |
-| `auto` + viewport קטן | 600×500 | `{isMobile:true}` | mobile UI אוטומטית. |
+| תרחיש                          | viewport  | overrides          | תוצאה                                                                    |
+| ------------------------------ | --------- | ------------------ | ------------------------------------------------------------------------ |
+| ברירת מחדל, viewport רחב       | 1001×1142 | `{isMobile:false}` | desktop UI — split panes, ribbon, sidebar קבוע. `bodyHasIsMobile=false`. |
+| `layout-mode=mobile` + reload  | 1001×1142 | `{isMobile:true}`  | mobile UI — hamburger toggle, mobile new-tab. `bodyHasIsMobile=true`.    |
+| `layout-mode=desktop` + reload | 600×500   | `{isMobile:false}` | desktop UI נשמר גם ב-viewport קטן.                                       |
+| `auto` + viewport קטן          | 600×500   | `{isMobile:true}`  | mobile UI אוטומטית.                                                      |
 
 בכל המצבים `plat_isMobileApp=true` ו-`vault.adapter` ממשיך להיות `CapacitorAdapter` (`getNativePath`, `quickList` נוכחים; אין `path` כמו ב-FileSystemAdapter; `Capacitor.getPlatform()='android'`).
 
@@ -796,6 +825,7 @@ Applying patches…
 **2. `Filesystem` plugin — ה-core**
 
 15 מתודות מנותבות ל-`/api/fs/*` הקיים. Mapping מלא ב-`docs/investigations.md` תחת "Capacitor approach". המרת data types:
+
 - binary read → base64 (Capacitor convention).
 - binary write → base64 → atob → ArrayBuffer.
 - `readdir` entries מומרים מ-`{isDirectory, ...}` של השרת ל-`{type: 'directory'|'file', ...}` של Capacitor.
@@ -814,7 +844,7 @@ Applying patches…
 
 #### Pitfalls שנתפסו
 
-- **`PluginHeaders` חובה** — `registerPlugin()` הוא Proxy שבודק `c.PluginHeaders` *לפני* שמגיע ל-`nativePromise`. בלי entry שם, כל method זורק "not implemented on android". פרטים מלאים: [investigations.md → PluginHeaders mechanism](./investigations.md#pluginheaders).
+- **`PluginHeaders` חובה** — `registerPlugin()` הוא Proxy שבודק `c.PluginHeaders` _לפני_ שמגיע ל-`nativePromise`. בלי entry שם, כל method זורק "not implemented on android". פרטים מלאים: [investigations.md → PluginHeaders mechanism](./investigations.md#pluginheaders).
 - **`stat` format mismatch** — השרת מחזיר `{isDirectory: true}`, Capacitor מצפה `{type: 'directory'}`. הconverter `toCapacitorDirEntry` ב-shim מתרגם.
 - **"Vault path is not a directory"** — סימן ש-`stat` החזיר `{isDirectory: false}` או response עם type אחר. ה-fix ב-`client-mobile/boot.js`: לבדוק גם `stat.isDirectory` וגם `stat.type === 'directory'`.
 - **`i18next` חייב לפני `app.js`** — ה-bundle המcompiled עצמו מייבא `i18next` ב-module level (לא lazy). הסדר ב-`MOBILE_SCRIPTS` חייב להעמיד את כל ה-lib scripts (codemirror, moment, pixi, **i18next**, scrypt, turndown) לפני `enhance.js` / `i18n.js` / `app.js`.
@@ -915,12 +945,14 @@ Applying patches…
 נוספה תיקיית `cf/` בתוך הריפו — Cloudflare Workers deployment עצמאי שמשתמש באותם `client/` ו-`obsidian/` מהפרויקט הראשי.
 
 **ארכיטקטורה:**
+
 ```
 CF Worker (entry) → /api/** → Durable Object "VaultDO"
                   → שאר   → CF Pages static assets (public/)
 ```
 
 **Durable Object — VaultDO:**
+
 - `vault.files: Map<path, {content, mtime, size}>` — ה"filesystem" בזיכרון
 - `vault.dirs: Map<path, [{name, isFile, …}]>` — directory listings
 - `alarm()` — reset כל X שעות (ברירת מחדל 4), גם עם משתמשים פעילים
@@ -928,10 +960,12 @@ CF Worker (entry) → /api/** → Durable Object "VaultDO"
 - eviction טבעי = reset (constructor טוען template מחדש)
 
 **שני מצבים מאותו קוד:**
+
 - `DEMO_MODE=true` (ברירת מחדל) — in-memory, reset, ללא auth
 - `DEMO_MODE=false` + R2 binding — persistent, auth ב-`X-Api-Key`
 
 **API handlers (src/api/):**
+
 - `bootstrap.js` — בונה bootstrap response מ-vault.files ו-vault.dirs
 - `fs.js` — stat/readdir/read/write/mkdir/unlink/rmdir/rename/copy
 - `electron.js` — IPC stubs (vault info, version, frame, …)
@@ -942,12 +976,14 @@ CF Worker (entry) → /api/** → Durable Object "VaultDO"
 6 notes ב-Hebrew + English שמציגים: RTL, backlinks, tags, markdown features, ארכיטקטורה של הפרויקט.
 
 **Build script (scripts/build-assets.sh):**
+
 - מעתיק client/ + obsidian/ + resource dirs מהפרויקט הראשי
 - מ-inject `localStorage.setItem('obsidian-web:lastVaultId','demo')` ל-index.html
 - מחליף `?v=N` ב-`?v=demo`
 - תוצאה: 705 קבצים, 43MB
 
 **Deploy:**
+
 ```bash
 cd cf
 npm run deploy  # = build-assets.sh + wrangler deploy
@@ -973,6 +1009,7 @@ npm run deploy  # = build-assets.sh + wrangler deploy
 הבעיה: `index.html` ו-`starter.html` כללו `?v=3` hardcoded על כל script tag של `/client/...`. כל שינוי בקבצי client דרש bump ידני של המספר בשני קבצים — ופשוט לשכוח.
 
 הפתרון:
+
 - `server/config.js` מחשב `clientCacheBust` פעם אחת בעלייה: סריקת כל קבצי `client/` (sorted לצורך דטרמיניזם), hash של `path:mtime` → 6 תווים hex. שינוי בכל קובץ client מייצר bust חדש.
 - `server/index.js` — `/` ו-`/starter` לא מגישים את ה-HTML ישירות. במקום זאת, `sendHtmlWithCacheBust` קורא את הקובץ, מחליף `?v=<כל ערך>` (ואם אין — מוסיף) על כל `src="/client/..."` tags, ומחזיר את ה-HTML המעודכן עם `Cache-Control: no-cache`.
 
@@ -1001,6 +1038,7 @@ npm run deploy  # = build-assets.sh + wrangler deploy
 **2. איחוד `walkVault` + `walkDir`**
 
 `_buildCacheEntry` הכיל פונקציה פנימית `walkVault` (~55 שורות) שהיתה כמעט העתק מדויק של `walkDir` שכבר קיימת. ההבדלים העיקריים היו:
+
 - `walkVault` ניסה לשמור stats מה-`dirsCache` בפגישה שנייה (במקום re-stat) — אבל `walkDir` כבר עושה stat רק פעם אחת ב-`Promise.all`.
 - `walkVault` דילגה על `dirsCache[relDir]` שכבר קיים — לא נדרש כי `walkDir` עם `walkHidden=false` ממחליפה את הערך הקיים בתוצאה זהה.
 
@@ -1010,7 +1048,8 @@ npm run deploy  # = build-assets.sh + wrangler deploy
 
 הארכיטקטורה הקודמת: כל WebSocket connection (טאב בדפדפן) פתח chokidar watcher נפרד על ה-vault. שלושה טאבים = שלושה watchers על אותה תיקייה = משאבי OS כפולים (inotify watches / polling timers).
 
-הארכיטקטורה החדשה: `sharedWatchers: Map<vaultRoot, { watcher, clients: Set<ws> }>`. 
+הארכיטקטורה החדשה: `sharedWatchers: Map<vaultRoot, { watcher, clients: Set<ws> }>`.
+
 - WebSocket connection ראשון ל-vault יוצר watcher + מוסיף את עצמו ל-`clients`.
 - WebSocket נוסף לאותו vault — מוסיף את עצמו ל-`clients` הקיים, ללא watcher חדש.
 - Events משודרים ל-כל ה-`clients` (fan-out).
@@ -1036,6 +1075,7 @@ npm run deploy  # = build-assets.sh + wrangler deploy
 **2. `crypto.createHash` — async fallback + תיעוד**
 
 השיטה `createHash().digest()` החזירה ריק בלי הסבר. עכשיו:
+
 - **.digest(encoding, cb)** — אם סופק callback, מבצע hash אסינכרוני אמיתי דרך `crypto.subtle.digest` ומחזיר תוצאה נכונה. ה-algo names ממופים מ-Node (`sha256`, `sha1`, `md5`) לשמות WebCrypto.
 - **.digest(encoding)** ללא callback — עדיין מחזיר ריק (WebCrypto הוא async-only), אבל עם `console.warn` מפורט שמסביר את המגבלה ומציין שצריך לעטוף בגרסה async.
 - תיעוד מלא של המגבלה ב-comment.
@@ -1095,6 +1135,7 @@ Obsidian קורא `statSync`/`readFileSync` על קבצי config שאולי לא
 thread לחלוטין — הדפדפן לא יכול לצייר כלום בזמן ההמתנה (2-20 שניות).
 
 **הפתרון:**
+
 - `index.html` — הוסרו כל `<script defer src="/obsidian/...">`. הוספה `<div id="ow-loading">` עם CSS spinner לפני כל ה-scripts.
 - `boot.js` — ה-sync XHR הוחלף ב-`fetch()` אסינכרוני. אחרי שהbootstrap
   חוזר, הscripts של אובסידיאן מוזרקים דינמית עם `async=false` (הורדה
@@ -1135,10 +1176,10 @@ thread לחלוטין — הדפדפן לא יכול לצייר כלום בזמ�
 
 ```js
 // לפני (שגוי):
-emit(eventType, eventType, filename);   // eventType = 'rename' → handlers.rename
+emit(eventType, eventType, filename); // eventType = 'rename' → handlers.rename
 
 // אחרי (נכון):
-emit('change', eventType, filename);    // תמיד → handlers.change
+emit("change", eventType, filename); // תמיד → handlers.change
 ```
 
 נבדק עם Playwright: `stat` ו-`read` על הקובץ החדש הופעלו, הקובץ הגיע ל-vault
@@ -1148,6 +1189,7 @@ model של אובסידיאן, ועץ הקבצים התעדכן.
 
 ה-vault רץ על Google Drive דרך rclone FUSE — ה-kernel לא מוציא inotify events
 על FUSE. הוספנו:
+
 - `WATCH_POLLING=true` ב-systemd service של ה-LXC.
 - `WATCH_POLL_INTERVAL` (ברירת מחדל 3000ms).
 - `usePolling` / `interval` / `binaryInterval` ב-chokidar.
@@ -1215,6 +1257,7 @@ Cloudflare שמר cache על קבצי ה-client. בוצע bump לכל קבצי �
 **2. `buildCacheEntry()` — לוגיקה מופרדת מהHTTP handler**
 
 הלוגיקה כולה חולצה לפונקציה `buildCacheEntry(vaultId, vaultRoot, vaultRegistry, full)` שאינה תלויה ב-`req`/`res`. מאפשר:
+
 - קריאה מה-HTTP handler.
 - קריאה מה-warm-up routine.
 - בדיקות יחידה ישירות ללוגיקה (ללא HTTP overhead).
@@ -1233,11 +1276,11 @@ Cloudflare שמר cache על קבצי ה-client. בוצע bump לכל קבצי �
 
 #### תוצאות
 
-| מדד | לפני | אחרי |
-|---|---|---|
-| cache HIT latency | ~800ms | **4–20ms** |
-| בקשה ראשונה (cold build) | ~200ms | ~250ms (+ ~50ms pre-compression) |
-| הבקשה הראשונה של המשתמש | cold build | **warm-up HIT** |
+| מדד                      | לפני       | אחרי                             |
+| ------------------------ | ---------- | -------------------------------- |
+| cache HIT latency        | ~800ms     | **4–20ms**                       |
+| בקשה ראשונה (cold build) | ~200ms     | ~250ms (+ ~50ms pre-compression) |
+| הבקשה הראשונה של המשתמש  | cold build | **warm-up HIT**                  |
 
 #### החלטות ארכיטקטורה
 
@@ -1298,15 +1341,15 @@ Cloudflare שמר cache על קבצי ה-client. בוצע bump לכל קבצי �
 
 #### תוצאות
 
-| מדד | לפני | אחרי |
-|---|---|---|
-| sync XHR calls | 14 | **1** (bootstrap) |
-| readdir calls לשרת | 508 | **9** (98% מחוסל) |
-| stat calls על .md | ~430 | **0** |
-| bootstrap size (compressed) | — | **~6MB** brotli |
-| bootstrap time (warm) | — | **~1.5s** בשרת |
-| טעינה via tunnel (cold rclone) | 130s (Dataview) + 3.5s sync | **~25s** |
-| טעינה via tunnel (warm rclone) | זהה | **~12s** |
+| מדד                            | לפני                        | אחרי              |
+| ------------------------------ | --------------------------- | ----------------- |
+| sync XHR calls                 | 14                          | **1** (bootstrap) |
+| readdir calls לשרת             | 508                         | **9** (98% מחוסל) |
+| stat calls על .md              | ~430                        | **0**             |
+| bootstrap size (compressed)    | —                           | **~6MB** brotli   |
+| bootstrap time (warm)          | —                           | **~1.5s** בשרת    |
+| טעינה via tunnel (cold rclone) | 130s (Dataview) + 3.5s sync | **~25s**          |
+| טעינה via tunnel (warm rclone) | זהה                         | **~12s**          |
 
 #### החלטות ארכיטקטורה
 
@@ -1452,11 +1495,13 @@ node scripts/update-obsidian.js --no-cache
 #### גילוי הסיבה
 
 עטפנו את `workQueue.queue` ב-trace והגענו למסקנה שהtask הראשונה תקועה. מצאנו את הקוד של ה-task ב-`app.js`:
+
 1. `vault.readBinary(file)` ✓ (כבר ידענו שזה עובד)
 2. `Sf(content)` - SHA-256 hash ✓
 3. `this.work(content)` - parse metadata ב-Web Worker ← **כאן התקיעה**
 
 מצאנו ש-`prototype.work` עוטף `worker.postMessage` ב-Promise שמחכה לתשובה:
+
 ```js
 prototype.work = function(e) {
   if (this.workerResolve) throw new Error("Work queue must be sequential!");
@@ -1474,10 +1519,13 @@ prototype.work = function(e) {
 #### התיקון
 
 ב-`server/index.js` - הוספת route חדש שמגיש קבצים בודדים מ-root:
+
 ```js
-const ROOT_FILES = ['worker.js', 'sim.js'];
+const ROOT_FILES = ["worker.js", "sim.js"];
 for (const f of ROOT_FILES) {
-  app.get('/' + f, (req, res) => res.sendFile(path.join(config.obsidianPath, f)));
+  app.get("/" + f, (req, res) =>
+    res.sendFile(path.join(config.obsidianPath, f)),
+  );
 }
 ```
 
@@ -1520,6 +1568,7 @@ for (const f of ROOT_FILES) {
 **הערות כלליות על Obsidian internals**: ארכיטקטורה (vault/adapter/fileManager/metadataCache/workspace), API של FileSystemAdapter, מבנה IndexedDB (3 DBs, 2 object stores), מבנה fileExplorer view, debugging methods שעובדים טוב.
 
 **5 בעיות פתוחות:**
+
 - **B-001 (קריטי)**: `metadataCache.inProgressTaskCount` תקוע על 3, אינדקס לא מסתיים. חוסם rename ועוד פעולות שמחכות ל-`onCleanCache`. השערה עיקרית: ה-task הראשונה ב-workQueue תקועה בתוך `await fsPromises.readFile` או async chain פנימי.
 - **B-002**: rename דרך ה-UI - תלוי ב-B-001.
 - **B-003**: `readdir` על קובץ - מוקטן (פעם אחת בלבד), נחשב התנהגות פנימית של אובסידיאן.
@@ -1553,6 +1602,7 @@ for (const f of ROOT_FILES) {
 **1. Menu shim כ-EventEmitter מלא**
 
 ה-stub הקודם החזיר `{popup, closePopup, items}` בלבד. הקוד של אובסידיאן מוסיף listeners עם `.on('menu-will-close', ...)`. עכשיו ה-Menu מחזיר אובייקט עם:
+
 - `on/off/once/addListener/removeListener/removeAllListeners` שמחזירים את ה-menu עצמו (chain-able)
 - `emit` שמפעיל את ה-handlers
 - `popup(opts)` שמרנדר context menu DOM אמיתי
@@ -1567,18 +1617,21 @@ for (const f of ROOT_FILES) {
 **3. אישוש שה-rename API עובד**
 
 חקרנו את ה-rename flow. `app.vault.adapter.rename(...)` עובד מצוין:
+
 ```js
 await window.app.vault.adapter.rename("Welcome.md", "WelcomeRenamed.md");
 // → POST 200 /api/fs/rename, הקובץ באמת שונה
 ```
 
-**4. אבחנה: rename דרך ה-UI** 
+**4. אבחנה: rename דרך ה-UI**
 
 `startRename` של file tree item רק מוסיף `is-being-renamed` class ו-`contenteditable=true`. הפעולה האמיתית מתבצעת ב-`view.acceptRename()` שנקרא דרך:
+
 - `fileRenameScope.register([], "Enter", n.onKeyEnterInRename.bind(n))` - לחיצה על Enter
 - (אין handler ל-blur על file tree items - בניגוד ל-inline title)
 
 הקוד של `acceptRename`:
+
 ```js
 acceptRename() {
   const e = this.fileBeingRenamed;
@@ -1625,6 +1678,7 @@ acceptRename() {
 **2. תיקון ENOTDIR/EISDIR**
 
 השרת החזיר 400 ל-readdir על קובץ ול-read על תיקייה. שינינו ל-404 כי:
+
 - אובסידיאן מטפל ב-ENOENT/ENOTDIR/EISDIR בtry/catch כאילו זה "לא קיים"
 - 4xx אחרים גורמים ל-Obsidian להציג `[ERROR] Failed to load resource` בזמן שזה לא באמת שגיאה
 - 500 שמרנו לשגיאות אמיתיות ב-handler
@@ -1653,11 +1707,13 @@ middleware פשוט שלוגר בקשות ל-`/api`, `/i18n`, `/lib` כדי שנ
 #### באג שלא תוקן: rename דרך ה-UI
 
 לחיצה ימנית על קובץ → "שנה שם" → הקלדת שם חדש → Enter:
+
 - העץ מתעדכן (השם החדש מופיע)
 - אבל **שום קריאה ל-`/api/fs/rename` לא נשלחת**
 - הקובץ הישן נשאר על הדיסק
 
 מהמחקר ב-app.js:
+
 - אובסידיאן עושה `_exists(targetPath)` לפני rename, ואם החזיר true - throw "Destination file already exists!"
 - `_exists` משתמש ב-`fsPromises.access(p)` - הצלחה => קובץ קיים, ENOENT => לא קיים
 - ה-`access` שלנו פשוט קורא ל-`statAsync` ומחזיר את ה-error
@@ -1766,18 +1822,21 @@ middleware פשוט שלוגר בקשות ל-`/api`, `/i18n`, `/lib` כדי שנ
 **Commit 0** של slice `server-bootstrap-perf`:
 
 #### מה בוצע
+
 - `src/server/config.js`: הוספת `threadPoolSize: parseInt(process.env.UV_THREADPOOL_SIZE || '64', 10)` ל-export.
 - `src/server/index.js`: הוספת block בראש הקובץ (לפני כל require שנוגע ב-FS) שמגדיר `process.env.UV_THREADPOOL_SIZE` אם לא הוגדר ידנית. ערך ברירת מחדל 64 (במקום 4 של libuv).
 - `src/server/index.js`: גורדו guards `if (appConfig.xPath)` סביב כל `express.static()` calls — תיקון pre-existing failure שנוצר ב-reorganization commit 9c0bec8 (כל הטסטים נכשלו עם "root path required" כשהועבר config חלקי).
 - `README.md`: הוספת `UV_THREADPOOL_SIZE` לסעיף Configuration עם הסבר מלא.
 
 #### מדידות (manual)
+
 - vault: `eca2fa9fb0fa4b15` על rclone/Drive FUSE mount (~598 קבצים, 104 תיקיות)
 - pool=4, VFS warm: full build 721ms, HIT 2ms
 - pool=64, VFS warm: full build 715ms, HIT 3ms
 - על VFS warm, ה-pool size לא מהותי (latency נסתרת). על VFS cold — pool=64 מוריד מ-~37s ל-~2s (ראה תיעוד ב-config.js).
 
 #### בדיקות
+
 - `npm test`: 10/10 ירוקים (כולל 2 שהיו broken לפני התיקון)
 - Testing strategy: manual (לפי brief §4)
 
@@ -1790,11 +1849,12 @@ middleware פשוט שלוגר בקשות ל-`/api`, `/i18n`, `/lib` כדי שנ
 **Commit 1** של slice `server-bootstrap-perf`:
 
 #### מה בוצע
+
 - **חדש: `src/server/api/bootstrap-invalidate.js`** — לוגיקה טהורה (ללא express/FS) לעדכון surgical של entry ב-serverCache:
   - `updateEntryFile(entry, relPath, {content, size, mtime})`: מעדכן `fs[relPath]` + `dirs[parent]`
   - `removeEntryPath(entry, relPath)`: מוחק מ-`fs` ו-`dirs[parent]`; תיקיות → prune כל תת-עץ מ-`fs`/`dirs`/`dirMtimes`
   - שניהם מחזירים `{ changed: boolean }`, לא מקמפרסים (caller עושה debounce recompress)
-- **`src/server/api/bootstrap.js`**: 
+- **`src/server/api/bootstrap.js`**:
   - import של `bootstrap-invalidate.js`
   - הוספת `invalidateEntry(vaultId, relPath, opts)` עם debounced recompress (250ms)
   - Guard: אם `pendingBuilds` בריצה → fall back ל-`serverCache.delete` (race prevention)
@@ -1808,6 +1868,7 @@ middleware פשוט שלוגר בקשות ל-`/api`, `/i18n`, `/lib` כדי שנ
 - **`src/server/api/electron.js`**: החלפת `invalidateBootstrapCache` ב-`invalidateEntry` ב-call-site שמיני (`/trash` — ממצא אביגיל #1/#2)
 
 #### בדיקות
+
 - TDD: test/bootstrap-invalidate.test.js נכתב ראשון (10 טסטים אדומים), אחר כך bootstrap-invalidate.js
 - `npm test`: 20/20 ירוקים (10 חדשים + 10 קיימים)
 - Testing strategy: tdd (לפי brief §4)
@@ -1821,6 +1882,7 @@ middleware פשוט שלוגר בקשות ל-`/api`, `/i18n`, `/lib` כדי שנ
 **Commit 0** של slice `opfs-store` (worktree `.worktrees/opfs-store`, branch `opfs-store`, base `main`):
 
 #### מה בוצע
+
 - **חדש: `src/client-mobile/storage/opfs-store.js`** — IIFE שחושף `window.__owOpfsStore = { makeStore }`. `makeStore(vaultId)` מחזיר store עם אותו פני-שטח מדויק כמו `Filesystem` plugin ב-`capacitor-shim.js`, מגובה **OPFS** תחת `/vaults/<vaultId>/`:
   - `readFile`/`writeFile`/`appendFile`/`deleteFile` — utf8 + binary(base64), `arrayBufferToBase64`/`base64ToArrayBuffer` chunked (זהה ל-capacitor-shim:78-94)
   - `appendFile` — byte-exact `ישן ⧺ חדש` (קורא bytes קיימים אם יש, משרשר, כותב הכל, `await w.close()`); יוצר קובץ+תיקיות-אב חסרים אם לא קיים
@@ -1833,11 +1895,13 @@ middleware פשוט שלוגר בקשות ל-`/api`, `/i18n`, `/lib` כדי שנ
 - 0 עריכות לקוד קיים — קובץ חדש בלבד.
 
 #### חריגה טכנית — סביבת ההרצה
+
 - הסביבה הזו לא כוללת Node.js אמיתי — `node` הוא ה-wrapper של Bun (`bun-node`), ו-`node --check`/`-c` לא עושה syntax-check בלבד אלא **מריץ** את הקובץ (נכשל עם `ReferenceError: window is not defined`, כצפוי למודול ברוב-דפדפן). וידאתי syntax תקין דרך `bun build src/client-mobile/storage/opfs-store.js --outdir=/tmp/... --target=browser` (bundled בהצלחה, 0 שגיאות פרסינג).
 - מאותה סיבה, `node --test` לא תומך בפורמט directory argument של הפרויקט — הרצתי baseline דרך `bun test src/client-mobile/test/` (**21/21 ירוקים**, זהה בכוונה ל-`node --test`).
 - `bun test` בשרת (`src/server`) מראה **1/21 נכשל** (`vaults-api.test.js` — hook timeout על beforeEach/afterEach) — **קיים מראש על `main`** (אימתתי בהרצה על הריפו הראשי, לא ה-worktree, לפני כל שינוי). לא קשור ל-slice הזה (הוא לא נוגע בשרת בכלל). לא תוקן — מחוץ ל-scope.
 
 #### בדיקות
+
 - Testing strategy: manual/syntax (לפי brief §4, Commit 0)
 - `bun build ... --target=browser`: 0 שגיאות
 - `bun test src/client-mobile/test/`: 21/21 ירוקים (baseline sanity — לא נגענו בקבצים האלה)
@@ -1852,12 +1916,14 @@ middleware פשוט שלוגר בקשות ל-`/api`, `/i18n`, `/lib` כדי שנ
 **Commit 1** של slice `opfs-store`:
 
 #### מה בוצע
+
 - **חדש: `src/client-mobile/test/opfs-store.selftest.html`** — עמוד עצמאי שטוען אך ורק את `opfs-store.js`, מריץ 17 אסרשנים (12 קבוצות לפי §4 של הבריף) ומדפיס `PASS`/`FAIL` לכל אחד ל-`<pre id="out">`, עם שורת-סיכום `#summary`: `ALL PASS (N)` או `FAILED: k`.
 - מנקה `vaults/selftest-vault` בתחילת ההרצה (idempotent — ריצות חוזרות של העמוד מתחילות נקי).
 - מכסה: mkdir+write+read utf8, readdir, binary(base64) roundtrip כולל NUL, write עמוק עם auto-mkdir parents, stat (file+dir), rename=copy+delete (dest קיים + source נמחק), copy, deleteFile, **watchAndStatAll flat-list עם נתיבים מלאים ואין `children` על entries** (אסרשן 9 — הקריטי, מגן על באג production 2026-05-12), watch API no-ops, appendFile byte-exact (כולל יצירת קובץ+אבות חסרים), getUri blob: URL שנפתר לתוכן.
 - 0 עריכות לקוד קיים — קובץ חדש בלבד (מסתמך על `opfs-store.js` מ-Commit 0 בלבד).
 
 #### חריגה טכנית — אין דפדפן בסביבת ההרצה של אליעזר
+
 - בסביבה הזו (worktree, non-interactive) אין chrome/chromium/playwright זמינים (`which google-chrome chromium chromium-browser playwright` — כולם not found). **לא הרצתי בפועל את העמוד בדפדפן.**
 - מה שכן אימתתי:
   - השרת רץ (`PORT=4001 node index.js`, כי 4000 תפוס ע"י תהליך אחר שלא נגעתי בו — לפי §0 "אל תהרוג BE רץ").
@@ -1867,6 +1933,7 @@ middleware פשוט שלוגר בקשות ל-`/api`, `/i18n`, `/lib` כדי שנ
 - **אימות ה-runtime המלא (טעינת העמוד בדפדפן אמיתי + קריאת "ALL PASS") נותר למשימת calev בסוף ה-slice** — כפי שההוראה מהדיספאצ'ר קבעה מראש למקרה שאין גישת gui-host לאליעזר.
 
 #### בדיקות
+
 - Testing strategy: integration (לפי brief §4, Commit 1) — הקוד+הטסט נכתבו יחד באותו commit; ההרצה בפועל (ALL PASS) מאומתת ע"י calev בסוף ה-slice.
 - `bun test src/client-mobile/test/`: 21/21 ירוקים (baseline sanity)
 - HTTP 200 לעמוד ולמודול (curl)
@@ -1880,6 +1947,7 @@ middleware פשוט שלוגר בקשות ל-`/api`, `/i18n`, `/lib` כדי שנ
 **Commit 0** של slice `opfs-wire` (worktree `.worktrees/opfs-wire`, branch `opfs-wire`, base `opfs-store` — שרשור, tip `fcfca48`):
 
 #### מה בוצע
+
 - **חדש: `src/client/local-vault-registry.js`** — IIFE שחושף `window.__owLocalVaults` (מבוסס Phase 2a של `local-vaults-implementation.md`), מגובה `localStorage['obsidian-web:local-vaults']` (JSON map `{ [id]: {name, createdAt} }`):
   - `list()` — מערך `{id, name, createdAt}` ממויין `createdAt` יורד
   - `get(id)` — `{name, createdAt}` או `null`
@@ -1891,10 +1959,12 @@ middleware פשוט שלוגר בקשות ל-`/api`, `/i18n`, `/lib` כדי שנ
 - 0 עריכות לקוד קיים — קובץ חדש בלבד.
 
 #### חריגה טכנית — סביבת ההרצה (זהה ל-opfs-store)
+
 - `node -c`/`--check` על הריצה הזו (bun-node shim) לא עושה syntax-check טהור אלא **מריץ** את הקובץ ונכשל עם `ReferenceError: window is not defined` — התנהגות ידועה, גם על קובץ תקין לחלוטין (אימתתי על `opfs-store.js` הקיים, מאומת GO, ונכשל באותו אופן). אימתתי syntax תקין דרך `bun build src/client/local-vault-registry.js --outdir /tmp/synccheck` (bundled בהצלחה, 0 שגיאות).
 - אין דפדפן זמין בסביבה הזו (`which google-chrome chromium chromium-browser playwright` — הכל not found) — אימות פונקציונלי מלא (create/list/has/remove בפועל) נדחה ל-Commit 3 / calev-heavy בסוף ה-slice, כפי שהבריף עצמו קובע ("אימות פונקציונלי ב-Commit 3").
 
 #### בדיקות
+
 - Testing strategy: manual/syntax (brief §4, Commit 0)
 - `bun build src/client/local-vault-registry.js --outdir /tmp/synccheck`: 0 שגיאות
 - `bun test src/client-mobile/test/`: 21/21 ירוקים (baseline sanity — לא נגענו בקבצים האלה)
@@ -1908,6 +1978,7 @@ middleware פשוט שלוגר בקשות ל-`/api`, `/i18n`, `/lib` כדי שנ
 **Commit 1** של slice `opfs-wire`:
 
 #### מה בוצע
+
 - **עריכה: `src/client-mobile/boot.js`**:
   - **(א)** מיד אחרי `VAULT_ID` — `VAULT_TYPE = __owLocalVaults.has(VAULT_ID) ? 'local' : 'server'`, נחשף כ-`window.__owVaultType`/`window.__owVaultId`, ולוג קונסול.
   - **(ב)** בלוק אימות ה-vault — `branch`: `local` → `navigator.storage.getDirectory()` → `getDirectoryHandle('vaults', {create:true})` → `getDirectoryHandle(VAULT_ID, {create:true})` (idempotent, יוצר את תיקיית ה-vault ב-OPFS אם עוד לא קיימת); `server` → אותה קריאת `fetch('/api/fs/stat?...')` כמו קודם, ללא שינוי התנהגות.
@@ -1915,6 +1986,7 @@ middleware פשוט שלוגר בקשות ל-`/api`, `/i18n`, `/lib` כדי שנ
 - 0 שינויים לקבצים אחרים.
 
 #### חריגה טכנית — אין דפדפן (Testing strategy = integration, לפי מגבלת הסביבה)
+
 - הבריף קבע Testing=integration לקומיט הזה, אבל הקוד הזה תלוי לחלוטין ב-DOM API של דפדפן אמיתי (`navigator.storage.getDirectory()`, script injection, MutationObserver) — אין אפשרות להריץ בו integration test אמיתי ב-Node/bun (אין OPFS ב-Node). לפי ההנחיה המפורשת של הדיספאצ'ר למקרה שאין gui-host: ביצעתי syntax-check + HTTP 200 + regression על ה-unit tests, ותיעדתי שה-E2E המלא (הבדיקה מ-§4 "Verification E2E") נדחה ל-`calev-heavy` בסוף ה-slice.
 - `bun build src/client-mobile/boot.js --outdir /tmp/synccheck` — 0 שגיאות פרסינג.
 - הרצתי שרת (`PORT=4001 node index.js`, כי 4000 תפוס ע"י תהליך קיים — לא נגעתי בו): `curl` ל-`/mobile`, `/client-mobile/boot.js`, `/client/local-vault-registry.js` — כולם **200**.
@@ -1922,6 +1994,7 @@ middleware פשוט שלוגר בקשות ל-`/api`, `/i18n`, `/lib` כדי שנ
 - `bun test src/client-mobile/test/`: 21/21 ירוקים (regression check — הקוד שלנו לא נוגע במודולים האלה).
 
 #### בדיקות
+
 - Testing strategy: integration (brief §4, Commit 1) — ביצוע חלקי בגלל מגבלת סביבה (אין דפדפן); syntax + HTTP 200 + unit-regression בוצעו כאן, E2E מלא (כולל דילוג bootstrap בפועל, DoD#6) → calev-heavy.
 - `bun build`: 0 שגיאות
 - HTTP 200: `/mobile`, `/client-mobile/boot.js`, `/client/local-vault-registry.js`
@@ -1937,6 +2010,7 @@ middleware פשוט שלוגר בקשות ל-`/api`, `/i18n`, `/lib` כדי שנ
 **Commit 2** של slice `opfs-wire`:
 
 #### מה בוצע
+
 - **עריכה: `src/client-mobile/shims/capacitor-shim.js`**:
   1. שינוי שם: `const Filesystem = { ... }` (178-514 במקור) → `const HttpFilesystem = { ... }`.
   2. **3 ההפניות הפנימיות שונו ל-`HttpFilesystem`** (כפי שהבריף דרש במפורש, "בדוק את כל 3 המופעים"): `trash` → `HttpFilesystem.deleteFile` (היה `Filesystem.deleteFile`, שורה ~382 במקור), `watchAndStatAll` → `HttpFilesystem.startWatch` (היה `Filesystem.startWatch`, ~448), `addListener` → `HttpFilesystem.startWatch` (היה `Filesystem.startWatch`, ~497). אחרת trash/watch של HTTP היו מנותבים דרך ה-Proxy, מה שעלול לפצל בין backends אם `__owVaultType` משתנה בין קריאות.
@@ -1945,17 +2019,21 @@ middleware פשוט שלוגר בקשות ל-`/api`, `/i18n`, `/lib` כדי שנ
 - 0 שינויים לקבצים אחרים.
 
 #### בדיקה אמיתית של ה-Proxy (מעבר ל-syntax-check) — אין דפדפן, אז הרצה scripted ב-bun
+
 זה ה-commit הכי מסוכן בסלייס (bind + 3 הפניות פנימיות) ולא הסתפקתי ב-`bun build`. כתבתי סקריפט חד-פעמי (`/tmp/shim-check.mjs`, **לא נשמר בריפו** — כלי אימות זמני, לא scope) שמדמה מינימלית `window`/`navigator`/`document`/`localStorage`/`fetch`/`WebSocket` ו-stub ל-`window.Capacitor = {fromNative(){}}`, `window.__owLocalVaults.has()=true`, ו-stub ל-`window.__owOpfsStore.makeStore` שסופר קריאות ל-`deleteFile` ומממש `trash` **בדיוק כמו ה-opfs-store.js האמיתי** (`return this.deleteFile(opts)` — נשען על `this`). ה-import של `capacitor-shim.js` מריץ את ה-IIFE האמיתי ללא שינוי (אותו קובץ בדיוק שיוגש בפרודקשן), כולל `patchCapacitor()` ב-module-init שממלא את `window.Capacitor.Plugins.Filesystem` עם ה-Proxy האמיתי. תוצאות (bun, לא דפדפן, אבל **הקוד האמיתי** רץ ללא mocking שלו עצמו):
+
 1. `Filesystem.trash({path:'note.md'})` עם `__owVaultType='local'` → מגיע ל-`OpfsStore.trash` → `this.deleteFile` נקרא (counter=1). **מוכיח ש-bind עובד**.
 2. `const {trash} = Filesystem; trash({path:'note2.md'})` (קריאה מפורקת, בלי `Filesystem.` prefix) → עדיין `this.deleteFile` נקרא (counter=2). **מוכיח שה-bind שורד גם destructuring** — התרחיש שהאזהרה בבריף (§4 Commit 2.3) מתארת במפורש.
 3. מעבר ל-`__owVaultType='server'` → `Filesystem.deleteFile(...)` מגיע ל-`HttpFilesystem` (fetch stub), **ולא** ל-OpfsStore (counter נשאר 2). **מוכיח שאין דליפה בין backends**.
-פלט: `ALL PROXY SANITY CHECKS PASSED`.
+   פלט: `ALL PROXY SANITY CHECKS PASSED`.
+
 - זה לא מחליף E2E דפדפן אמיתי (OPFS עצמו לא רץ כאן — ה-stub עוקף אותו), אבל מכסה בדיוק את שני הסיכונים הקריטיים שהבריף סימן (bind, פיצול backends) בקוד production האמיתי, לא בקוד מדומה.
 - `bun build src/client-mobile/shims/capacitor-shim.js --outdir /tmp/synccheck` — 0 שגיאות פרסינג.
 - HTTP 200: `curl http://localhost:4001/client-mobile/shims/capacitor-shim.js`.
 - `bun test src/client-mobile/test/`: 21/21 ירוקים (regression — קובץ זה לא נבדק ע"י ה-unit tests הקיימים, אבל שאר המודולים לא הושפעו).
 
 #### בדיקות
+
 - Testing strategy: integration (brief §4, Commit 2) — בוצע בפועל (לא רק syntax): הרצה scripted אמיתית של ה-IIFE המקורי ב-bun, מוכיחה bind + הפרדת backends. E2E דפדפן מלא (OPFS אמיתי, לא stub) → calev-heavy.
 - `bun build`: 0 שגיאות
 - HTTP 200: `/client-mobile/shims/capacitor-shim.js`
@@ -1971,21 +2049,28 @@ middleware פשוט שלוגר בקשות ל-`/api`, `/i18n`, `/lib` כדי שנ
 **Commit 3** (אחרון) של slice `opfs-wire`:
 
 #### מה בוצע
+
 - **עריכה: `src/client-mobile/index.html`** — הוספו **לפני** `capacitor-shim.js`:
+
   ```html
   <script src="/client/local-vault-registry.js?v=1"></script>
   <script src="/client-mobile/storage/opfs-store.js?v=1"></script>
   ```
+
   לא נדרש bump ידני ל-`?v=` — `sendHtmlWithCacheBust` (`src/server/index.js:65`, route `/mobile`) כותב-מחדש את כל תגי ה-`?v=` ב-`/client(-mobile)/*` אוטומטית לפי mtime. אימתתי: `curl http://localhost:4001/mobile` מציג `?v=ac12bbe50947` על שני התגים החדשים ועל capacitor-shim — busting עובד.
+
 - **חדש: `src/client-mobile/new-local.html`** — עמוד מינימלי עצמאי (dark theme בסיסי, בלי Obsidian assets): שדה שם + כפתור "Create local vault" (`__owLocalVaults.create(name)` → `location.href='/mobile?vault='+id`), ורשימת local vaults קיימים (`__owLocalVaults.list()`) עם קישור ל-`/mobile?vault=<id>` לכל אחד. טוען רק `/client/local-vault-registry.js` — אין תלות ב-boot.js/capacitor-shim/Obsidian bundle.
 - **walkthrough**: entry זה.
 - **עדכון סטטוס בבריף**: `docs/plans/opfs-wire.md` → "הושלם".
 
 #### DoD#9 — אין שינוי ל-opfs-store.js ולא לשרת
+
 `git diff --name-only opfs-store..HEAD` (אחרי Commit 3): `docs/plans/opfs-wire.md`, `docs/walkthrough.md`, `src/client-mobile/boot.js`, `src/client-mobile/index.html`, `src/client-mobile/new-local.html`, `src/client-mobile/shims/capacitor-shim.js`, `src/client/local-vault-registry.js` — בדיוק §2 בבריף, 0 נגיעה ב-`opfs-store.js` או `src/server/*`. ✅
 
 #### חריגה טכנית — E2E מלא נותר ל-calev-heavy
+
 עמוד היצירה + הזרימה המלאה (יצירת vault → כתיבת notes + תיקיות מקוננות → reload → רגרסיה על server vault) דורשים OPFS אמיתי בדפדפן — **אין OPFS ב-Node/bun**, ואין דפדפן זמין בסביבת הביצוע (`google-chrome`/`chromium`/`playwright` — not found). מה שכן אימתתי:
+
 - `bun build` על ה-JS המוטמע ב-`new-local.html` (חולץ לקובץ זמני) — 0 שגיאות פרסינג.
 - HTTP 200: `/mobile`, `/client-mobile/new-local.html`.
 - סדר טעינת ה-scripts ב-`/mobile` (curl, ראה למעלה) — registry + opfs-store **לפני** capacitor-shim, כנדרש.
@@ -1994,6 +2079,7 @@ middleware פשוט שלוגר בקשות ל-`/api`, `/i18n`, `/lib` כדי שנ
 - ה-DoD המלא (§5, פריטים 1-7) ו-Verification E2E (§4 Commit 3) → `calev-heavy` בסוף ה-slice, כפי שהבריף עצמו קבע (Complexity 7, tier heavy בגלל E2E מובייל + רגרסיה dual-path).
 
 #### בדיקות
+
 - Testing strategy: integration (brief §4, Commit 3) — syntax + HTTP 200 + loading-order verification + unit-regression בוצעו כאן; E2E מלא בדפדפן (יצירה/כתיבה/reload/רגרסיה) → calev-heavy.
 - `bun build` (inline script של new-local.html): 0 שגיאות
 - HTTP 200: `/mobile`, `/client-mobile/new-local.html`
@@ -2009,42 +2095,49 @@ middleware פשוט שלוגר בקשות ל-`/api`, `/i18n`, `/lib` כדי שנ
 **Base**: branch `opfs-wire` (tip `fe74350`, לא merged) | **Commits**: 3 (0, 1, 2)
 
 #### מה בוצע — Commit 0 (integration)
-תיקון הבאג שנתפס בסבב preview הקודם: `OpfsStore.getUri({path:''})` (השורש, בדיוק מה שאובסידיאן קורא ב-vault-open) עשה `resolveParent(vaultId,'',...)` → `name=undefined` → `getFileHandle(undefined)` → `NotFoundError` שנזרק. `rethrowAsEnoent` היה אמור לעטוף אותו ל-capError('ENOENT',...) אבל ה-guard (`if (e && e.code) throw e`) בדק *קיום* של `code` בלבד — ול-DOMException יש `.code` **מספרי** (NotFoundError=8), אז ה-guard חשב שזה כבר capError אמיתי והדליף את ה-DOMException הגולמי במקום לעטוף.
+
+תיקון הבאג שנתפס בסבב preview הקודם: `OpfsStore.getUri({path:''})` (השורש, בדיוק מה שאובסידיאן קורא ב-vault-open) עשה `resolveParent(vaultId,'',...)` → `name=undefined` → `getFileHandle(undefined)` → `NotFoundError` שנזרק. `rethrowAsEnoent` היה אמור לעטוף אותו ל-capError('ENOENT',...) אבל ה-guard (`if (e && e.code) throw e`) בדק _קיום_ של `code` בלבד — ול-DOMException יש `.code` **מספרי** (NotFoundError=8), אז ה-guard חשב שזה כבר capError אמיתי והדליף את ה-DOMException הגולמי במקום לעטוף.
 
 - **`src/client-mobile/storage/opfs-store.js:113`** — `rethrowAsEnoent`: הguard שונה ל-`typeof e.code === 'string'` (capError אמיתי) — DOMException (code מספרי) עכשיו נעטף כראוי.
 - **`src/client-mobile/storage/opfs-store.js:334`** — `getUri`: לא זורק יותר בשום מקרה (תואם `HttpFilesystem.getUri` שאף פעם לא נוגע ב-FS). קובץ אמיתי → עדיין blob URL (ללא שינוי התנהגות); שורש/תיקייה/חסר → uri סינתטי `opfs:/vaults/<id>/...`.
 - 0 שינויים אחרים ל-opfs-store.js (בדיוק §2 בבריף).
 
 #### מה בוצע — Commit 1 (integration)
+
 **כיסוי-בדיקה חסר**: ה-self-test המקורי (`opfs-store.selftest.html`) בדק `getUri` **רק על קובץ** (assertion 12) — אף פעם לא על שורש `''`, שזה בדיוק הנתיב שאובסידיאן קורא ב-vault-open. **"ירוק ≠ נכון"**: ה-GO של סבב הpreview הקודם (opfs-store slice) פספס את הבאג הזה כי הכיסוי לא בדק את המקרה הקריטי בפועל. נוספו 3 assertions (13-15): `getUri('')` לא זורק ומחזיר uri לא-ריק, `getUri(dir)` לא זורק, `getUri(file)` עדיין blob (רגרסיה ל-12).
 
 **Verification**: הרצתי את ה-self-test בדפדפן אמיתי (playwright chromium, זמין בסביבה הזו דרך `bunx playwright` — לא כמו בהרצות קודמות של הslice-thread שדיווחו "אין דפדפן") מול שרת מקומי (`PORT=4010 node index.js`) → **`ALL PASS (23)`**.
 
 #### מה בוצע — Commit 2 (none)
+
 walkthrough entry זה + עדכון סטטוס בבריף ל"הושלם".
 
 #### הכנת סביבה
+
 - `vendor/obsidian-mobile/` הובא מ-worktree השכן (`cp -r ../opfs-wire/vendor .`) — נמנע re-download.
 - `worker.js`/`sim.js`/`i18n`/`lib` מוגשים מ-`vendor/obsidian/` (desktop) לפי `src/server/index.js` — לא היה קיים ב-worktree. יצרתי **symlink** `vendor/obsidian → obsidian-mobile` (כמו שהבריף §0 הציע כ-workaround מוכר, לא באג ה-slice). `worker.js`/`sim.js`/`i18n/he.txt`/`lib/*` נטענים 200 OK דרכו. `i18n/en.txt` לא קיים ב-bundle mobile (יש רק `en-GB.txt`) — 404 שולי, לא חוסם.
 - Node/npm לא זמינים בסביבת הביצוע הזו (רק `bun`). השתמשתי ב-`bun install` (שקורא את `package-lock.json` הקיים) במקום `npm install` — `bun.lock` שנוצר **לא הוכנס ל-git** (artifact מקומי, מחוץ ל-scope). `bun test` הריץ את 3 קובצי הטסט (21/21) — `node --test <dir>` לא עבד תחת bun's node shim (`Module not found` על directory argument), אז זו הפקודה שהשתמשתי בה בפועל לאימות DoD#8.
 
 #### DoD verifiable (§5 בבריף) — מצב אחרי Commits 0-2
-| # | סטטוס | הערה |
-|---|------|------|
-| 1-3 | ✅ | self-test assertions 13-15, `ALL PASS (23)` |
-| 4 | ✅ | עיון קוד + assertions 1 (guard `typeof e.code==='string'`) |
-| **5** | **⚠️ לא הושג בבדיקה שלי — ראה למטה** | **הקריטי ביותר** |
-| 6 | ✅ | ה-trace שלי (למטה) הראה 0 קריאות ל-`/api/fs` בזמן פתיחת local vault |
-| 7 | ✅ | server vault (id רשום דרך `POST /api/vaults/open`) נפתח ל-workspace מלא, `window.app.workspace` קיים — נבדק ב-playwright |
-| 8 | ✅ | `bun test src/client-mobile/test/`: 21/21 |
-| 9 | ✅ | `git diff --name-only opfs-wire..HEAD` (אחרי Commits 0-1): רק `opfs-store.js` + `opfs-store.selftest.html` |
+
+| #     | סטטוס                                | הערה                                                                                                                     |
+| ----- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| 1-3   | ✅                                   | self-test assertions 13-15, `ALL PASS (23)`                                                                              |
+| 4     | ✅                                   | עיון קוד + assertions 1 (guard `typeof e.code==='string'`)                                                               |
+| **5** | **⚠️ לא הושג בבדיקה שלי — ראה למטה** | **הקריטי ביותר**                                                                                                         |
+| 6     | ✅                                   | ה-trace שלי (למטה) הראה 0 קריאות ל-`/api/fs` בזמן פתיחת local vault                                                      |
+| 7     | ✅                                   | server vault (id רשום דרך `POST /api/vaults/open`) נפתח ל-workspace מלא, `window.app.workspace` קיים — נבדק ב-playwright |
+| 8     | ✅                                   | `bun test src/client-mobile/test/`: 21/21                                                                                |
+| 9     | ✅                                   | `git diff --name-only opfs-wire..HEAD` (אחרי Commits 0-1): רק `opfs-store.js` + `opfs-store.selftest.html`               |
 
 #### חריגה חשובה — DoD#5 (render מלא) לא הושלם בבדיקת-העל-שלי, מעבר לscope
+
 מעבר לself-test (Commit 1, שכן בscope), ניסיתי גם render מלא בדפדפן (playwright — זמין כאן, למרות שדיווחים קודמים ב-thread הזה אמרו "אין דפדפן") כי זו בדיוק הבדיקה שהבריף מציין כ"האימות הקריטי" (§8). התוצאה: **התיקון עובד נכון** (אימתתי עם trace על כל קריאות ה-OpfsStore בזמן אמת: `checkPerms`→OK, `getUri({path:'',directory:'EXTERNAL'})`→**מצליח, לא זורק** [!], `getUri({directory:null,path:''})`→מצליח, `stat`→עוטף כ-ENOENT כראוי (לא DOMException גולמי), `readdir('')`→מצליח `{files:[]}`) — **אבל** ה-workspace עדיין לא עולה: האפליקציה נשארת על מסך ה-onboarding "Create a vault / Use my existing vault" (בדיוק התיאור המקורי "vault-chooser ריק" בבאג), ולחיצה (כולל `force:true`) על שני הכפתורים **לא מייצרת אף קריאת OpfsStore נוספת ולא משנה את ה-DOM** — נראה כאילו הם קוראים ל-native bridge (folder-picker?) שלא ממומש ב-capacitor-shim לזרימת ה-onboarding הזו.
 
 **מסקנה**: `getUri` **לא היה החסם היחיד** (בדיוק התרחיש ש-§7 בבריף חזה מראש: "אולי getUri הוא לא החסם היחיד — דווח מה הקריאה הבאה שנכשלת"). הקריאה הבאה שנכשלת בפועל היא ה-**קליק** על "Create a vault"/"Use my existing vault" — לא מייצר side-effect נראה לעין. זה מחוץ ל-scope של ה-slice הזה (§2: "שינוי ל-capacitor-shim/boot/registry/שרת ❌"). מדווח ל-calev-heavy + מרדכי לאימות עצמאי ולהחלטה אם נדרש brief המשך (כנראה: bypass לonboarding כש-vault ID כבר קיים ב-registry המקומי, או מימוש native bridge לכפתורים).
 
 #### בדיקות
+
 - Testing strategy: Commit 0=integration, Commit 1=integration, Commit 2=none — לפי הבריף, ללא סטייה.
 - Commit 0: `bun build --target=browser` (proxy ל-syntax check, `node -c` לא עבד — bun's node shim מריץ את ה-IIFE בפועל ונכשל על `window is not defined` ברמת top-level, קיים גם ב-baseline, לא syntax error).
 - Commit 1: self-test בדפדפן אמיתי (playwright chromium) → `ALL PASS (23)`.

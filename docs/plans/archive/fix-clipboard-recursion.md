@@ -46,10 +46,12 @@ cd .worktrees/fix-clipboard-recursion
 ### Reading list
 
 **must-read**:
+
 - ‏[`src/client/shims/electron.js`](src/client/shims/electron.js) ‏שורות 464-497 — ‏אובייקט `remote` ‏כולל `clipboard`.
 - ‏ה-issue #8 + ‏ה-stack trace שבו.
 
 **reference**:
+
 - ‏[`src/client/index.html`](src/client/index.html) ‏שורה 60 — `<script src="/client/shims/electron.js?v=3">` (‏סינכרוני, ‏לפני app.js).
 - ‏[`src/server/index.js`](src/server/index.js) ‏שורות 56-66 — ‏cache-bust אוטומטי לפי mtime (‏אין צורך בבמפ ידני ל-`?v=`).
 
@@ -115,6 +117,7 @@ electron.clipboard.writeText (shim, electron.js:468)
 ### Commit 0 — fix: capture native clipboard before Obsidian patches it (approach: manual)
 
 **‏קבצים שמשתנים**:
+
 - ‏`src/client/shims/electron.js` — ‏מחליף את ה-literal `clipboard: { ... }` ‏ב-IIFE שלוכד native.
 
 **‏השינוי המדויק** (‏executor אסור לשנות חתימה):
@@ -167,24 +170,24 @@ node --check src/client/shims/electron.js   # ‏syntax OK
 
 ## §5 — DoD verifiable
 
-| # | ‏בדיקה | ‏איך |
-|---|------|------|
-| 1 | syntax תקין | `node --check src/client/shims/electron.js` |
-| 2 | ‏copy בתוך code block ‏עובד | ‏פתח `http://localhost:3000/` ‏עם vault שיש בו note עם code block (```), ‏hover על ה-block, ‏לחץ על כפתור ה-copy. ‏לא נזרק RangeError ב-console. |
-| 3 | ‏הטקסט באמת ב-clipboard | ‏אחרי הלחיצה, ‏הדבק (`Ctrl+V`) ‏לתוך תא עריכה / ‏בדוק `navigator.clipboard.readText()` ‏ב-console (‏עם gesture) — ‏מכיל את תוכן ה-block. |
-| 4 | ‏אין recursion ב-stack | console נקי מ-`Maximum call stack size exceeded`. |
-| 5 | regression: ‏בוט תקין | ‏האפליקציה עולה רגיל, ‏אין שגיאות חדשות ב-console בזמן הטעינה. |
+| #   | ‏בדיקה                      | ‏איך                                                                                                                                             |
+| --- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | syntax תקין                 | `node --check src/client/shims/electron.js`                                                                                                      |
+| 2   | ‏copy בתוך code block ‏עובד | ‏פתח `http://localhost:3000/` ‏עם vault שיש בו note עם code block (```), ‏hover על ה-block, ‏לחץ על כפתור ה-copy. ‏לא נזרק RangeError ב-console. |
+| 3   | ‏הטקסט באמת ב-clipboard     | ‏אחרי הלחיצה, ‏הדבק (`Ctrl+V`) ‏לתוך תא עריכה / ‏בדוק `navigator.clipboard.readText()` ‏ב-console (‏עם gesture) — ‏מכיל את תוכן ה-block.         |
+| 4   | ‏אין recursion ב-stack      | console נקי מ-`Maximum call stack size exceeded`.                                                                                                |
+| 5   | regression: ‏בוט תקין       | ‏האפליקציה עולה רגיל, ‏אין שגיאות חדשות ב-console בזמן הטעינה.                                                                                   |
 
 ---
 
 ## §6 — Risks + mitigations
 
-| ‏סיכון | ‏מקור | ‏מיטיגציה |
-|------|------|----------|
-| ‏ה-IIFE לא רץ לפני app.js | ‏אם סדר הטעינה ישתנה | ‏מאומת: `index.html:60` ‏טוען את ה-shim כ-`<script>` ‏סינכרוני, ‏ו-boot.js/app.js ‏נטענים אחריו. ‏ה-IIFE רץ בזמן evaluation של ה-script. |
-| `navigator.clipboard` undefined (‏הקשר לא-secure) | http ‏לא localhost | ‏ה-guard מחזיר Promise.reject/'' ‏במקום לזרוק TypeError. ‏ב-`localhost`/https ‏ה-API קיים. |
-| ‏native writeText ‏נכשל ב-NotAllowedError | ‏חוסר user gesture | ‏לא קשור לבאג; ‏לחיצה אמיתית על הכפתור מספקת activation. ‏לא לבלבל בין זה ל-RangeError. |
-| ‏עותקים נוספים של ה-shim (cloudflare/server) | ‏יש 3 ‏עותקי electron.js | ‏רק `src/client/shims/electron.js` ‏הוא ה-client shim הרלוונטי. ‏`src/server/api/electron.js` ‏ו-`src/deployments/cloudflare/api/electron.js` ‏הם משהו אחר (server-side). ‏**‏לא** ‏לגעת בהם בלי בדיקה. ‏(`.tmp/...` ‏הוא build artifact.) |
+| ‏סיכון                                            | ‏מקור                    | ‏מיטיגציה                                                                                                                                                                                                                                  |
+| ------------------------------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| ‏ה-IIFE לא רץ לפני app.js                         | ‏אם סדר הטעינה ישתנה     | ‏מאומת: `index.html:60` ‏טוען את ה-shim כ-`<script>` ‏סינכרוני, ‏ו-boot.js/app.js ‏נטענים אחריו. ‏ה-IIFE רץ בזמן evaluation של ה-script.                                                                                                   |
+| `navigator.clipboard` undefined (‏הקשר לא-secure) | http ‏לא localhost       | ‏ה-guard מחזיר Promise.reject/'' ‏במקום לזרוק TypeError. ‏ב-`localhost`/https ‏ה-API קיים.                                                                                                                                                 |
+| ‏native writeText ‏נכשל ב-NotAllowedError         | ‏חוסר user gesture       | ‏לא קשור לבאג; ‏לחיצה אמיתית על הכפתור מספקת activation. ‏לא לבלבל בין זה ל-RangeError.                                                                                                                                                    |
+| ‏עותקים נוספים של ה-shim (cloudflare/server)      | ‏יש 3 ‏עותקי electron.js | ‏רק `src/client/shims/electron.js` ‏הוא ה-client shim הרלוונטי. ‏`src/server/api/electron.js` ‏ו-`src/deployments/cloudflare/api/electron.js` ‏הם משהו אחר (server-side). ‏**‏לא** ‏לגעת בהם בלי בדיקה. ‏(`.tmp/...` ‏הוא build artifact.) |
 
 ---
 
@@ -198,11 +201,11 @@ node --check src/client/shims/electron.js   # ‏syntax OK
 
 ## §8 — Complexity score + verifier tier
 
-| ‏פרמטר | ‏ניקוד |
-|------|------|
-| Pure logic, ‏שינוי נקודתי בקובץ אחד | -2 |
-| ‏אין IO ‏חדש, ‏אין data flow ‏חדש | -2 |
-| ‏Refactor מינורי של literal קיים | +1 |
+| ‏פרמטר                              | ‏ניקוד |
+| ----------------------------------- | ------ |
+| Pure logic, ‏שינוי נקודתי בקובץ אחד | -2     |
+| ‏אין IO ‏חדש, ‏אין data flow ‏חדש   | -2     |
+| ‏Refactor מינורי של literal קיים    | +1     |
 
 **Score**: 1/10
 
@@ -214,10 +217,10 @@ node --check src/client/shims/electron.js   # ‏syntax OK
 
 ## §9 — ‏שאלות פתוחות
 
-| # | ‏שאלה | ‏ברירת מחדל | ‏חוסם? |
-|---|------|----------|------|
-| 1 | ‏האם ל-`readText` ‏יש את אותה בעיית רקורסיה? | ‏כן ככל הנראה (‏אותו דפוס) — ‏התיקון מטפל בשניהם יחד. | ❌ |
-| 2 | ‏צריך לעדכן את העותק ב-`.tmp/deployments/...`? | ‏לא — ‏build artifact, ‏נוצר מחדש ב-`npm run build`. | ❌ |
+| #   | ‏שאלה                                          | ‏ברירת מחדל                                           | ‏חוסם? |
+| --- | ---------------------------------------------- | ----------------------------------------------------- | ------ |
+| 1   | ‏האם ל-`readText` ‏יש את אותה בעיית רקורסיה?   | ‏כן ככל הנראה (‏אותו דפוס) — ‏התיקון מטפל בשניהם יחד. | ❌     |
+| 2   | ‏צריך לעדכן את העותק ב-`.tmp/deployments/...`? | ‏לא — ‏build artifact, ‏נוצר מחדש ב-`npm run build`.  | ❌     |
 
 ---
 

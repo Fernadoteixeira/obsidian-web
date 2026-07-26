@@ -18,14 +18,14 @@
 
 ## טבלת הבדלים מ-Obsidian plugin רגיל
 
-| | Community plugin | System plugin |
-|---|---|---|
-| איפה חי | `<vault>/.obsidian/plugins/<id>/` | `<repo>/plugins/<id>/` |
-| מי מתקין | המשתמש (דרך ה-UI / manually) | המפתח של obsidian-web (commit לrepo) |
-| `community-plugins.json` enable | המשתמש שולט | system plugins תמיד "enabled" (re-injected at load) |
-| `data.json` settings | per-vault, ב-vault | per-vault, ב-vault (system plugin אינו "global") |
-| Bundling | חוסם — או build (TS/Rollup) או JS פשוט | אין build chain — JS פשוט, CommonJS |
-| Update | בייפול plugin / GitHub release | git pull / git commit |
+|                                 | Community plugin                       | System plugin                                       |
+| ------------------------------- | -------------------------------------- | --------------------------------------------------- |
+| איפה חי                         | `<vault>/.obsidian/plugins/<id>/`      | `<repo>/plugins/<id>/`                              |
+| מי מתקין                        | המשתמש (דרך ה-UI / manually)           | המפתח של obsidian-web (commit לrepo)                |
+| `community-plugins.json` enable | המשתמש שולט                            | system plugins תמיד "enabled" (re-injected at load) |
+| `data.json` settings            | per-vault, ב-vault                     | per-vault, ב-vault (system plugin אינו "global")    |
+| Bundling                        | חוסם — או build (TS/Rollup) או JS פשוט | אין build chain — JS פשוט, CommonJS                 |
+| Update                          | בייפול plugin / GitHub release         | git pull / git commit                               |
 
 ---
 
@@ -59,6 +59,7 @@ cd plugins/obsidian-web-<name>
 ```
 
 חשוב:
+
 - `isDesktopOnly: false` — אחרת לא ייטען ב-mobile runtime.
 - אין `authorUrl`, `fundingUrl` וכו' שלא רלוונטיים לפלאגין שלא הולך לcommunity directory.
 
@@ -67,29 +68,33 @@ cd plugins/obsidian-web-<name>
 אין build chain. הקובץ הוא ה-source. כתוב CommonJS פשוט שמייצא `default` בסגנון של פלאגין Obsidian:
 
 ```js
-'use strict';
+"use strict";
 
-const obsidian = require('obsidian');
+const obsidian = require("obsidian");
 
 class MyPlugin extends obsidian.Plugin {
   async onload() {
     // Detect that we are running inside obsidian-web before doing anything
     // that depends on our globals. On real Obsidian (desktop/mobile app),
     // __owPlatform doesn't exist — keep the plugin a no-op there.
-    if (typeof window.__owPlatform === 'undefined') {
-      console.log('[obsidian-web-<name>] not running on obsidian-web, skipping');
+    if (typeof window.__owPlatform === "undefined") {
+      console.log(
+        "[obsidian-web-<name>] not running on obsidian-web, skipping",
+      );
       return;
     }
 
     // ribbon icon, commands, settings, etc.
-    this.addRibbonIcon('settings', 'My Plugin', () => {
-      new obsidian.Notice('Hello from obsidian-web');
+    this.addRibbonIcon("settings", "My Plugin", () => {
+      new obsidian.Notice("Hello from obsidian-web");
     });
 
     this.addCommand({
-      id: 'my-plugin:do-thing',
-      name: 'Do the thing',
-      callback: () => { /* ... */ },
+      id: "my-plugin:do-thing",
+      name: "Do the thing",
+      callback: () => {
+        /* ... */
+      },
     });
   }
 
@@ -102,12 +107,14 @@ module.exports = MyPlugin;
 ```
 
 **מה קיים בסביבה?**
+
 - `require('obsidian')` — ה-API הרגיל של Obsidian (`Plugin`, `Notice`, `Modal`, `Setting`, `TFile`, ...). זמין דרך ה-runtime — אין `require` של Node.js, יש את ה-`require` של Obsidian.
 - `window.__owPlatform` — קיים רק על obsidian-web. השתמש כ-feature detection. ראה [`docs/investigations.md` → `__owPlatform` runtime API](./investigations.md#owplatform-api).
 - `window.app` — האפליקציה (זמין אחרי `onload`).
 - `localStorage` — נורמלי. שמירת state ב-`obsidian-web:<plugin-id>:*` keys היא הconvention.
 
 **מה אסור?**
+
 - `require('fs')` / `require('child_process')` — לא קיים ב-mobile runtime. הוא כן קיים ב-desktop runtime, אבל אם אתה כותב system plugin, סבירות גבוהה שתרצה שהוא יעבוד בשני ה-runtimes. השתמש ב-`app.vault.adapter` במקום.
 - Build artifacts ב-`<repo>/plugins/<id>/` — `main.js` הוא הקובץ עצמו, לא תוצאת build.
 

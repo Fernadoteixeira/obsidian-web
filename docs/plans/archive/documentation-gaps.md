@@ -21,12 +21,14 @@
 `"<plugin> is not implemented on android"`. **לא מתועד באף מסמך.**
 
 **מיקום הקוד:**
+
 - `client-mobile/shims/capacitor-shim.js` שורות 583-682 (יש comment קצר)
 - מינוחים: `c.PluginHeaders`, `rtype: 'promise'`, `nativePromise`, `registerPlugin Proxy`
 
 **איפה לתעד:** `docs/investigations.md`, סעיף חדש תחת "Capacitor approach"
 
 **מה צריך לכלול:**
+
 - ה-Proxy שיוצר `registerPlugin` ב-`app.js` (offset 181781 ב-v1.12.7)
 - המעבר: method call → check methods array → אם קיים → `nativePromise` (שלנו); אם לא → throw
 - למה `androidBridge.postMessage` לבד לא מספיק
@@ -39,11 +41,11 @@
 
 **הבעיה:** ה-codebase משתמש ב-"plugin" ל-**שני דברים שונים**:
 
-| מינוח | משמעות |
-|---|---|
-| Capacitor plugin | מודול native Capacitor (`Filesystem`, `App`, `Device`) |
-| Obsidian plugin | extension של Obsidian (`obsidian-web-layout`, LiveSync) |
-| System plugin | Obsidian plugin שהשרת מזריק (`plugins/` בריפו) |
+| מינוח            | משמעות                                                  |
+| ---------------- | ------------------------------------------------------- |
+| Capacitor plugin | מודול native Capacitor (`Filesystem`, `App`, `Device`)  |
+| Obsidian plugin  | extension של Obsidian (`obsidian-web-layout`, LiveSync) |
+| System plugin    | Obsidian plugin שהשרת מזריק (`plugins/` בריפו)          |
 
 **לא מתועד.** סוכן או reader חדש יבלבל בין השניים — הקבצים `system-plugins.js`
 ו-`PluginHeaders` עוסקים בשני concepts אורתוגונליים.
@@ -51,6 +53,7 @@
 **איפה לתעד:** `docs/investigations.md` — Glossary section בראש המסמך
 
 **מה צריך לכלול:**
+
 - טבלת מינוח
 - Diagram: Obsidian plugin → vault.adapter (CapacitorAdapter) → Capacitor.Plugins.Filesystem → our shim → HTTP API
 - הבהרה שlivesync (Obsidian plugin) משתמשת ב-Filesystem (Capacitor plugin) דרך CapacitorAdapter
@@ -61,6 +64,7 @@
 
 **הבעיה:** ב-`capacitor-shim.js` יש 13 plugins implemented/stubbed, אבל
 אין שום סיכום של:
+
 - אילו הם real implementations (HTTP → /api/fs)
 - אילו browser-native (Clipboard → navigator.clipboard)
 - אילו identity stubs (App.getInfo, Device.getInfo — מחזירים מידע אמיתי)
@@ -71,12 +75,13 @@
 ועותק חוזר ב-`investigations.md`
 
 **מה צריך לכלול:**
+
 ```
 Real implementations (route to HTTP API):
   Filesystem — readFile, writeFile, stat, readdir, mkdir, rmdir,
                rename, copy, deleteFile, getUri, startWatch,
                stopWatch, watchAndStatAll, addListener
-               
+
 Browser-native (delegate to Web APIs):
   Clipboard   — navigator.clipboard
   Browser     — window.open
@@ -91,7 +96,7 @@ Noop stubs (return success, do nothing):
   SplashScreen, StatusBar, Keyboard, KeepAwake, Haptics, RateApp
 
 TODO / known limitations:
-  App.requestUrl — currently returns {}; needs fetch implementation 
+  App.requestUrl — currently returns {}; needs fetch implementation
                    for LiveSync support (CORS-dependent)
 ```
 
@@ -101,6 +106,7 @@ TODO / known limitations:
 
 **הבעיה:** ה-mechanism שמאפשר control בזמן ריצה על ה-Platform flags של
 Obsidian הוא לב הלב של ה-mobile runtime. מתועד **חלקית**:
+
 - `walkthrough.md` 19:30 מדבר על ה-patches — טוב
 - אבל לא מסביר את ה-**runtime API** של `__owPlatform`
 
@@ -108,6 +114,7 @@ Obsidian הוא לב הלב של ה-mobile runtime. מתועד **חלקית**:
 `docs/runtime-api.md`
 
 **מה צריך לכלול:**
+
 - `window.__owPlatform` — reference חי ל-Platform object של Obsidian. כל
   שינוי משפיע על תנהגות פנימית של Obsidian (אבל לא retroactively).
 - `window.__owPlatformOverrides` — נקרא ב-IIFE, מוזרק ל-`Object.assign`.
@@ -126,6 +133,7 @@ Obsidian הוא לב הלב של ה-mobile runtime. מתועד **חלקית**:
 **איפה לתעד:** `docs/walkthrough.md` — entry חדש עם תאריך אחורה
 
 **מה צריך לכלול:**
+
 - מתי: 2026-05-11 (לפני 18:00)
 - מה: יצירת `client-mobile/`, `capacitor-shim.js`, native-bridge integration
 - Pitfalls: PluginHeaders (ראה פער 1), "Vault path is not a directory"
@@ -140,6 +148,7 @@ Obsidian הוא לב הלב של ה-mobile runtime. מתועד **חלקית**:
 ## 🟠 6. Virtual plugin overlay — מנגנון מלא
 
 **הבעיה:** ה-overlay של plugins מ-repo מתועד חלקית:
+
 - `walkthrough.md` 20:05 — אזכור קצר
 - `system-plugins.js` — header אבל לא comprehensive
 - אין הסבר על **rationale** של precedence (vault > repo) או על synthesized stat
@@ -147,12 +156,15 @@ Obsidian הוא לב הלב של ה-mobile runtime. מתועד **חלקית**:
 **איפה לתעד:** `docs/investigations.md` — סעיף חדש
 
 **מה צריך לכלול:**
+
 - Diagram של החלטות:
+
   ```
   GET /api/fs/read .obsidian/plugins/<id>/main.js
     → vault file exists? Yes → serve vault file
     → No                    → tryGetSystemFilePath() → serve repo file
   ```
+
 - `community-plugins.json`:
   - Read: merge system plugin ids into the array
   - Write: strip them before saving (vault stays clean)
@@ -167,17 +179,18 @@ Obsidian הוא לב הלב של ה-mobile runtime. מתועד **חלקית**:
 
 **הבעיה:** אי-עקביות בין `client/boot.js` ל-`client-mobile/boot.js`:
 
-| | client/boot.js (desktop) | client-mobile/boot.js |
-|---|---|---|
-| sync `.digest()` | Empty + warning | Empty + warning |
-| async `.digest(enc, cb)` | ✅ עובד דרך subtle.digest | ❌ לא ממומש |
-| `algo: 'md5'` | מתחפש ל-SHA-256 | מתחפש ל-SHA-256 |
+|                          | client/boot.js (desktop)  | client-mobile/boot.js |
+| ------------------------ | ------------------------- | --------------------- |
+| sync `.digest()`         | Empty + warning           | Empty + warning       |
+| async `.digest(enc, cb)` | ✅ עובד דרך subtle.digest | ❌ לא ממומש           |
+| `algo: 'md5'`            | מתחפש ל-SHA-256           | מתחפש ל-SHA-256       |
 
 ב-walkthrough כתוב שתיקנו, אבל זה תוקן רק ב-desktop. ה-mobile לא ייהנה מה-async path.
 
 **איפה לתעד:** `docs/investigations.md` תחת Open issues / OR לתקן את הקוד
 
 **מה צריך:**
+
 - אופציה א: לתעד את האי-עקביות כידועה
 - אופציה ב: להעתיק את הimplementation מהdesktop boot.js ל-mobile
 
@@ -189,12 +202,14 @@ Obsidian הוא לב הלב של ה-mobile runtime. מתועד **חלקית**:
 
 **הבעיה:** ה-LiveSync integration plan ב-`PLAN.md` עדיין מתאר את הגישה
 הישנה (`PROXY_ALLOWED_HOSTS`). דיברנו בשיחה על כיוון חדש (direct fetch
-+ CouchDB CORS) — לא תועד בשום מקום.
+
+- CouchDB CORS) — לא תועד בשום מקום.
 
 **איפה לתעד:** `PLAN.md` (לעדכן את הסעיף הקיים) +
 `docs/livesync-integration.md` (doc חדש מפורט)
 
 **מה צריך לכלול:**
+
 - **דחיית הproxy approach** — סיבות (cost, abuse, CF Workers limits, liability)
 - **הbחירה ב-direct fetch** — סיבות (no infra, infinite scale, מקובל בLiveSync)
 - **דרישת CORS על CouchDB** — דוגמה ל-`local.ini`
@@ -210,6 +225,7 @@ Obsidian הוא לב הלב של ה-mobile runtime. מתועד **חלקית**:
 ## 🟡 9. `client/` vs `client-mobile/` — שני runtimes
 
 **הבעיה:** הפרויקט תומך ב-**שני entry points**:
+
 - `/` → desktop bundle + electron shims (legacy)
 - `/mobile` → mobile bundle + Capacitor shim (preferred)
 
@@ -218,6 +234,7 @@ Obsidian הוא לב הלב של ה-mobile runtime. מתועד **חלקית**:
 **איפה לתעד:** `PLAN.md` — Architecture section
 
 **מה צריך לכלול:**
+
 - Diagram של שני הruntimes משתפים את אותו שרת
 - מתי להשתמש בכל אחד (default: mobile, desktop כ-fallback?)
 - האם planning להסיר את desktop בעתיד?
@@ -232,6 +249,7 @@ gitignored, ויש סקריפט להוריד. **לא מסובך אבל לא מת
 **איפה לתעד:** `README.md` — setup section
 
 **מה צריך לכלול:**
+
 - `node scripts/update-obsidian.js` ל-desktop bundle
 - `node scripts/update-obsidian-mobile.js` ל-mobile bundle
 - שניהם נדרשים אם רוצים את שני הruntimes
@@ -253,6 +271,7 @@ gitignored, ויש סקריפט להוריד. **לא מסובך אבל לא מת
 ## 🟡 12. workflow של דפדפן בgui-host
 
 **הבעיה:** הסוכן הבא שיצטרך לבדוק שוב לא יידע על:
+
 - port 9224 (כדי לא להפריע ל-9222/9223)
 - `--user-data-dir=/tmp/pw-obsidian-mobile`
 - צורך ב-reverse SSH tunnel ל-3000
@@ -261,6 +280,7 @@ gitignored, ויש סקריפט להוריד. **לא מסובך אבל לא מת
 **איפה לתעד:** `docs/dev-setup.md` (doc חדש) או section ב-`docs/investigations.md`
 
 **מה צריך לכלול:**
+
 - Port allocation
 - Session naming convention
 - Tunnel command (אם נדרש)
@@ -284,6 +304,7 @@ gitignored, ויש סקריפט להוריד. **לא מסובך אבל לא מת
 ## 🟡 14. Developer guide ל-system plugin חדש
 
 **הבעיה:** איך מוסיפים system plugin חדש? התשובה לא מתועדת:
+
 1. `mkdir plugins/obsidian-web-<name>`
 2. צור `manifest.json` עם `id` ששווה לdirectory name
 3. צור `main.js` עם CommonJS module + `class extends Plugin`
@@ -305,6 +326,7 @@ LiveSync כsystem plugin, ב-CF demo הוא ינסה לפעול על vault שמ�
 **איפה לתעד:** `cf/README.md` (אם קיים) ו-`PLAN.md`
 
 **מה צריך:**
+
 - ה-system plugin של LiveSync צריך להיות **opt-in via env var**
 - ב-CF demo: `SYSTEM_PLUGINS=obsidian-web-layout` (ללא LiveSync)
 - בself-hosted: `SYSTEM_PLUGINS=obsidian-web-layout,obsidian-livesync`
@@ -314,20 +336,24 @@ LiveSync כsystem plugin, ב-CF demo הוא ינסה לפעול על vault שמ�
 ## סיכום — סדר עדיפויות מוצע
 
 **Phase 1 (קריטי, חוסם הבנה):**
+
 - פער 1: PluginHeaders mechanism
 - פער 2: Terminology glossary
 - פער 3: Capacitor shim plugin list
 
 **Phase 2 (חשוב, עוזר לcontinuity):**
+
 - פער 4: `__owPlatform` API
 - פער 5: Walkthrough entry על הshim
 - פער 6: Virtual overlay full mechanism
 - פער 8: LiveSync new direction (direct fetch)
 
 **Phase 3 (nice-to-have, אחרי שyer LiveSync יתממש):**
+
 - פערים 7, 9, 10, 12-15 — לפי הצורך
 
 **תיקון קוד (לא תיעוד):**
+
 - פער 7: copy `createHash` async path מ-`client/boot.js` ל-`client-mobile/boot.js`
 
 ---

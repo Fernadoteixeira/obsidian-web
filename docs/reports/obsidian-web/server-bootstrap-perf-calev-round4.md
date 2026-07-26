@@ -35,13 +35,13 @@ findings:
 
 ## TL;DR
 
-| מדד | תוצאה |
-|------|--------|
-| DoD items עוברים | 7/8 (item 3 unverifiable בסביבה — אין root) |
-| Regressions | 0 |
-| Bugs חדשים | 1 minor (spec-drift, **pre-existing מ-Phase 2** — לא round-4) |
-| Tests ש-אליעזר הכריז | אומת עצמאית — 35/35 server, 14/14 mobile |
-| round-4 dir-mutation fix | **תקין מלא — byte-for-byte זהה ל-full בכל מוטציות התיקיות** |
+| מדד                      | תוצאה                                                         |
+| ------------------------ | ------------------------------------------------------------- |
+| DoD items עוברים         | 7/8 (item 3 unverifiable בסביבה — אין root)                   |
+| Regressions              | 0                                                             |
+| Bugs חדשים               | 1 minor (spec-drift, **pre-existing מ-Phase 2** — לא round-4) |
+| Tests ש-אליעזר הכריז     | אומת עצמאית — 35/35 server, 14/14 mobile                      |
+| round-4 dir-mutation fix | **תקין מלא — byte-for-byte זהה ל-full בכל מוטציות התיקיות**   |
 
 ‏round 4 ‏פתר במלואו את F1+F2 ‏מ-calev-heavy ‏סבב 3. ‏כל מוטציות התיקיות (mkdir,
 ‏mkdir+write-inside, rename-dir-with-children) ‏מייצרות payload **‏זהה byte-for-byte
@@ -54,16 +54,16 @@ findings:
 
 ## טבלת DoD items
 
-| # | Item מה-brief | סטטוס | עדות |
-|---|---------------|--------|------|
-| 1 | כל server tests ירוקים | ✅ | `npm test` → 35/35 pass, 0 fail (הרצתי בעצמי) |
-| 2 | mobile unit tests לא נשברו | ✅ | `node --test bootstrap-lookup + cache-invalidation` → 14/14 |
-| 3 | Cold bootstrap מהיר יותר | ⓘ לא ניתן לאימות | אין root → אין `drop_caches`; fixture תחת /tmp (לא rclone). אימתתי שה-knob מגיע (`UV_THREADPOOL_SIZE` default 64). טענת cold-perf נשענת על מדידת אליעזר. |
-| 4 | שמירה לא מוחקת cache | ✅ | PUT write על קובץ קיים → bootstrap הבא `cache HIT (0ms)`, לא MISS |
-| 5 | עדכון מדויק | ✅ | write '# UPDATED v2' → content נכון; size נכון |
-| 6 | מחיקה מדויקת — שני הנתיבים | ✅ | unlink + rmdir-recursive + electron/trash — בכולם הקובץ/תת-העץ נעלם מ-fs+dirs, **כולם byte-identical ל-full** |
-| 7 | Incremental מול full | ✅ | dir-mutations: `cache MISS (1 dirs changed): notes` → `incremental rebuild (1 dirs)` (לא full wipe); payload **זהה byte-for-byte ל-full re-scan** בכל המקרים שנבדקו |
-| 8 | HIT נקי נשאר מהיר | ✅ | fixture: HIT 0-1ms |
+| #   | Item מה-brief              | סטטוס            | עדות                                                                                                                                                                |
+| --- | -------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | כל server tests ירוקים     | ✅               | `npm test` → 35/35 pass, 0 fail (הרצתי בעצמי)                                                                                                                       |
+| 2   | mobile unit tests לא נשברו | ✅               | `node --test bootstrap-lookup + cache-invalidation` → 14/14                                                                                                         |
+| 3   | Cold bootstrap מהיר יותר   | ⓘ לא ניתן לאימות | אין root → אין `drop_caches`; fixture תחת /tmp (לא rclone). אימתתי שה-knob מגיע (`UV_THREADPOOL_SIZE` default 64). טענת cold-perf נשענת על מדידת אליעזר.            |
+| 4   | שמירה לא מוחקת cache       | ✅               | PUT write על קובץ קיים → bootstrap הבא `cache HIT (0ms)`, לא MISS                                                                                                   |
+| 5   | עדכון מדויק                | ✅               | write '# UPDATED v2' → content נכון; size נכון                                                                                                                      |
+| 6   | מחיקה מדויקת — שני הנתיבים | ✅               | unlink + rmdir-recursive + electron/trash — בכולם הקובץ/תת-העץ נעלם מ-fs+dirs, **כולם byte-identical ל-full**                                                       |
+| 7   | Incremental מול full       | ✅               | dir-mutations: `cache MISS (1 dirs changed): notes` → `incremental rebuild (1 dirs)` (לא full wipe); payload **זהה byte-for-byte ל-full re-scan** בכל המקרים שנבדקו |
+| 8   | HIT נקי נשאר מהיר          | ✅               | fixture: HIT 0-1ms                                                                                                                                                  |
 
 ## Flows שעבדו מקצה לקצה
 
@@ -107,8 +107,8 @@ findings:
 
 ## סיווג ל-patterns.md
 
-| באג | קטגוריה | הערה |
-|------|----------|------|
+| באג                    | קטגוריה                                               | הערה                                                                                                                                                                                                                                                                                                                                                                      |
+| ---------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | write-path mtime drift | **spec-drift** + קטגוריה 1 (TDD ירוק ≠ התנהגות נכונה) | ‏הטסטים שולחים `Accept-Encoding: identity` ‏ומשווים content/size/keys, ‏אבל אף טסט לא משווה mtime ‏מול disk-truth ‏אחרי write בנתיב ה-HIT. ה-unit-tests ‏של updateEntryFile ‏ירוקים על ה-contract הפנימי (mtime מועבר ונשמר), ‏אבל ה-contract ‏עצמו (mtime=Date.now ‏במקום disk) ‏סוטה מ-full. ‏זה אותו דפוס שתפס NBug1/NBug2 ‏בסבב 3 — ‏unit ירוק, parity מול full נכשל. |
 
 ## סיכום לסוכן הבא
@@ -118,6 +118,7 @@ findings:
 ‏35/35 + 14/14 ‏אומתו עצמאית. ‏verdict: **GO**.
 
 ‏פער יחיד (‏לא חוסם, ‏אופציונלי לתיקון בנפרד):
+
 1. **write-path mtime drift** (minor, pre-existing מ-Phase 2) — ‏לתקן ‏ע"י `fsp.stat`
    ‏אחרי writeFile בנתיב non-coalesce ‏והעברת ה-mtime ‏האמיתי. ‏מרפא את עצמו ב-Phase 3
    ‏ממילא, ‏אז זה cosmetic-parity ‏בלבד. ‏אם מרדכי רוצה "byte-for-byte" ‏מוחלט — ‏תיקון

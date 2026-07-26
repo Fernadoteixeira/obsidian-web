@@ -10,11 +10,11 @@
 
 המילה "plugin" מופיעה ב-codebase בשלושה הקשרים אורתוגונליים. כל סוכן/קורא חדש חייב להפריד ביניהם:
 
-| מינוח | מי מגדיר | משמעות | דוגמאות בקוד |
-|---|---|---|---|
-| **Capacitor plugin** | חבילת Capacitor (Ionic) | מודול native שנקרא דרך `Capacitor.Plugins.<Name>`. ב-mobile bundle של Obsidian, ה-`vault.adapter` הוא `CapacitorAdapter` שמשתמש ב-Capacitor plugin בשם `Filesystem`. | `client-mobile/shims/capacitor-shim.js`, `PluginHeaders` |
-| **Obsidian plugin** | Obsidian | extension של Obsidian (community / core) — JS module עם `manifest.json` + `main.js` שמרחיב את ה-app. רץ ב-renderer; נטען מ-`.obsidian/plugins/<id>/` של ה-vault. | `obsidian-livesync`, `obsidian-web-layout`, dataview |
-| **System plugin** (שלנו) | obsidian-web | Obsidian plugin **שמוזרק מהריפו** ולא חי בvault של המשתמש. השרת `server/system-plugins.js` חושף את `<repo>/plugins/<id>/` כאילו הוא חלק מ-`.obsidian/plugins/` של כל vault. | `plugins/obsidian-web-layout/` |
+| מינוח                    | מי מגדיר                | משמעות                                                                                                                                                                      | דוגמאות בקוד                                             |
+| ------------------------ | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| **Capacitor plugin**     | חבילת Capacitor (Ionic) | מודול native שנקרא דרך `Capacitor.Plugins.<Name>`. ב-mobile bundle של Obsidian, ה-`vault.adapter` הוא `CapacitorAdapter` שמשתמש ב-Capacitor plugin בשם `Filesystem`.        | `client-mobile/shims/capacitor-shim.js`, `PluginHeaders` |
+| **Obsidian plugin**      | Obsidian                | extension של Obsidian (community / core) — JS module עם `manifest.json` + `main.js` שמרחיב את ה-app. רץ ב-renderer; נטען מ-`.obsidian/plugins/<id>/` של ה-vault.            | `obsidian-livesync`, `obsidian-web-layout`, dataview     |
+| **System plugin** (שלנו) | obsidian-web            | Obsidian plugin **שמוזרק מהריפו** ולא חי בvault של המשתמש. השרת `server/system-plugins.js` חושף את `<repo>/plugins/<id>/` כאילו הוא חלק מ-`.obsidian/plugins/` של כל vault. | `plugins/obsidian-web-layout/`                           |
 
 ### Diagram של ה-stack בvocab של "plugin"
 
@@ -58,6 +58,7 @@ LiveSync (Obsidian plugin) מעולם לא יודע ש-Filesystem (Capacitor plu
 שני runtimes צורכים את `/api/bootstrap` ל-cold boot מהיר. ה-mobile shim בודק את `window.__owBootstrapCache` לפני HTTP על כל `readFile`/`stat`/`readdir` (88% hit rate). שלושה env vars לדפלוייר: `BOOTSTRAP_DISABLED`, `BOOTSTRAP_MAX_FILE_KB`, `BOOTSTRAP_MAX_TOTAL_MB`. מגבלות ידועות: [Workers לא רואים את ה-cache](#mobile-bootstrap-cache-workers), [watch-event firehose ב-LiveSync](#mobile-bootstrap-cache-firehose).
 
 **מקורות מידע משלימים:**
+
 - `docs/walkthrough.md` — יומן פיתוח כרונולוגי (19:30 build-time patches, 20:05 system plugin overlay, 17:00 בניית ה-Capacitor shim).
 - `PLAN.md` — סטטוס, roadmap, ו-LiveSync integration plan.
 - `docs/system-plugin-dev-guide.md` — איך להוסיף system plugin חדש.
@@ -80,7 +81,9 @@ LiveSync (Obsidian plugin) מעולם לא יודע ש-Filesystem (Capacitor plu
 - **`app.internalPlugins`** - core plugins (file-explorer, graph, וכו').
 
 ### ה-FileSystemAdapter API
+
 זמין ב-`app.vault.adapter`:
+
 ```
 adapter.read(path)          → string
 adapter.readBinary(path)    → ArrayBuffer
@@ -111,7 +114,9 @@ adapter.basePath            — root absolute path; אצלנו `/vault`
 **תוצאה מעשית:** IndexedDB הוא per-browser/session. דפדפן אחר או incognito → בנייה מחדש מאפס. אותו דפדפן → incremental update רק לקבצים שה-hash שלהם השתנה.
 
 ### IndexedDB databases
+
 אובסידיאן יוצר 3 DBs בדפדפן:
+
 - `default-cache` (version 19) - **שני object stores: `file` (mtime/size/hash) ו-`metadata`**
 - `default-backup` (version 1)
 - `default-sync` (version 1)
@@ -119,6 +124,7 @@ adapter.basePath            — root absolute path; אצלנו `/vault`
 ה-`metadataCache.transactionSave` כותב ל-IndexedDB. עובד אצלנו (יש fileKeys ב-DB).
 
 ### ה-fileExplorer view
+
 - מקום: `app.workspace.getLeavesOfType("file-explorer")[0].view`
 - `view.fileItems[path]` - map של path → tree item. כל item יש לו `el`, `selfEl`, `innerEl`, `file`, `startRename()`, `stopRename()`.
 - `view.fileBeingRenamed` - הקובץ שכרגע ב-rename mode (או null).
@@ -128,6 +134,7 @@ adapter.basePath            — root absolute path; אצלנו `/vault`
 - `view.fileRenameScope.register([], "Enter", view.onKeyEnterInRename)` - מטפל ב-Enter בזמן rename.
 
 ### crypto.subtle
+
 - אובסידיאן מחשב SHA hashes עם `window.crypto.subtle.digest("SHA-256", ...)`.
 - אצלנו זה **עובד** - בדקנו ידנית ויצא hash תקין באורך 32 בייטים.
 - ה-shim שלנו ל-`require('crypto')` לא מגיע לכאן כי זה משתמש ב-`window.crypto.subtle` ישירות.
@@ -138,11 +145,11 @@ adapter.basePath            — root absolute path; אצלנו `/vault`
 
 1. בstartup, הוא קורא את `.obsidian/community-plugins.json` — מערך של plugin ids שהמשתמש "הפעיל".
 2. עבור כל id, הוא עושה `readdir('.obsidian/plugins/<id>')` ומחפש `manifest.json` + `main.js`.
-3. **חשוב — נתפס בהטמעה:** ה-bundle הmobile עושה `stat('.obsidian/plugins')` *לפני* readdir. אם זה 404, הוא מפסיק שם ולא מבצע readdir. בלי תיקייה בvault עצמו, ה-discovery מת לפני שהגיע ל-overlay של readdir.
+3. **חשוב — נתפס בהטמעה:** ה-bundle הmobile עושה `stat('.obsidian/plugins')` _לפני_ readdir. אם זה 404, הוא מפסיק שם ולא מבצע readdir. בלי תיקייה בvault עצמו, ה-discovery מת לפני שהגיע ל-overlay של readdir.
 
 **ה-overlay שלנו (`server/system-plugins.js` + `server/api/fs.js`):**
 
-- `<repo>/plugins/<id>/` מוזרק כ"system plugin" שעוטף *כל* vault. מקור האמת לקבצים הוא ב-repo, לא בvault.
+- `<repo>/plugins/<id>/` מוזרק כ"system plugin" שעוטף _כל_ vault. מקור האמת לקבצים הוא ב-repo, לא בvault.
 - `/read` ו-`/stat`: אם הvault מכיל את הקובץ — הוא מנצח. אחרת — נופלים-back ל-repo. ככה משתמש יכול לבדוק override ידני.
 - `/stat` של `.obsidian/plugins` (ה-dir עצמו): כשלא קיים בvault ויש לפחות system-plugin אחד — מחזירים synthetic directory stat (`isDirectory:true`, mtime עכשווי). זה הgate הקריטי שגרם להstuck בהטמעה הראשונה.
 - `/readdir` של `.obsidian/plugins`: ממזג בdir entries של כל ה-system plugins לרשימה. גם ENOENT שלם — מחזיר רק את ה-system plugins.
@@ -176,22 +183,24 @@ GET /api/fs/read?path=.obsidian/plugins/obsidian-web-layout/main.js   → 200 (f
 
 ```js
 // רשימה מסוכמת — הכי שימושי:
-__owMissing.summary()
+__owMissing.summary();
 // מחזיר console.table עם עמודות: type | name | count | first(ms) | last(ms)
 
 // רשימה גולמית (array) — שימושי לעיבוד:
-__owMissing.list()
+__owMissing.list();
 // → [{ type: 'require', name: 'child_process', count: 14, firstSeen: 340, lastSeen: 8200 }, ...]
 ```
 
 **סוגי entries:**
-| `type` | `name` | משמעות |
-|---|---|---|
-| `require` | שם module | Plugin קרא `require('X')` ואין שים ל-X |
+
+| `type`     | `name`     | משמעות                                              |
+| ---------- | ---------- | --------------------------------------------------- |
+| `require`  | שם module  | Plugin קרא `require('X')` ואין שים ל-X              |
 | `sendSync` | שם channel | אובסידיאן קרא `ipcRenderer.sendSync('X')` שלא ממומש |
-| `send` | שם channel | אובסידיאן קרא `ipcRenderer.send('X')` שלא ממומש |
+| `send`     | שם channel | אובסידיאן קרא `ipcRenderer.send('X')` שלא ממומש     |
 
 **איך לפעול לפי התוצאה:**
+
 - `require` עם `count` גבוה → כדאי לממש shim ב-`client/shims/<name>.js` ולרשום ב-`client/boot.js`.
 - `require` עם `count` נמוך וchained errors → שים קל (stub) עדיף על `undefined`.
 - `sendSync`/`send` → מממשים ב-`ipcRenderer.sendSync` / `ipcRenderer.send` ב-`client/shims/electron.js`.
@@ -206,21 +215,22 @@ __owMissing.list()
 
 ```js
 // סיכום לפי סוג קריאה — total blocking time:
-__owTelemetry.summary()
+__owTelemetry.summary();
 // → console.table: label | count | totalMs | avgMs | uniquePaths
 
 // טבלה מפורטת של כל קריאה בסדר כרונולוגי:
-__owTelemetry.table()
+__owTelemetry.table();
 
 // שמור ב-localStorage לניתוח מאוחר:
-__owTelemetry.save()
+__owTelemetry.save();
 // → localStorage['obsidian-web:telemetry']
 
 // ייצוא JSON:
-__owTelemetry.dump()
+__owTelemetry.dump();
 ```
 
 **שימושים נפוצים:**
+
 - מציאת hot paths: `summary()` ממוין לפי `totalMs` — מה שמופיע ראשון הוא הצוואר בקבוק.
 - בדיקת עוצמת ה-bootstrap cache: אחרי reload, `summary()` אמור להראות `count=0` או ספרות נמוכות מאוד לכל FS op (כי bootstrap מגיש מcache).
 - Baseline vs. after: `clear()` → פתח פעולה → `summary()`.
@@ -232,16 +242,17 @@ __owTelemetry.dump()
 #### `__owBootstrapCache` — תוכן ה-bootstrap
 
 לא כלי ניפוי, אבל שימושי לאימות:
+
 ```js
 // כמה קבצים נטענו מראש:
-Object.keys(__owBootstrapCache.fs).length   // → 140 לדוגמה
+Object.keys(__owBootstrapCache.fs).length; // → 140 לדוגמה
 
 // בדיקה שקובץ ספציפי קוש:
-__owBootstrapCache.fs['.obsidian/app.json']
+__owBootstrapCache.fs[".obsidian/app.json"];
 // → { content: '...', mtime: 1234, size: 512, isFile: true }
 
 // electron IPC values שנטענו מראש:
-__owBootstrapCache.electron
+__owBootstrapCache.electron;
 // → { vault: {id, path}, version: '1.12.7', 'is-dev': false, ... }
 ```
 
@@ -251,22 +262,23 @@ __owBootstrapCache.electron
 
 ה-starter.js המקורי מצפה ל-IPC channels הבאים (חולצו מ-`obsidian/main.js` שלא minified):
 
-| channel | כיוון | מה מוחזר | הערות |
-|---|---|---|---|
-| `vault-list` | sendSync | `{ [id]: { path, ts, open } }` | כל הכספות. ts = timestamp אחרון. |
-| `vault-open` | sendSync(path, createIfMissing) | `true` אם הצליח, string שגיאה אם לא | path הוא אבסולוטי. מחזיר `true` ולא id. |
-| `vault-remove` | sendSync(path) | `true`/`false` | path אבסולוטי של הכספת. |
-| `vault-move` | sendSync(oldPath, newPath) | `""` אם הצליח, `"EVAULTOPEN"` אם פתוחה, string שגיאה אחר | |
-| `vault` | sendSync | `{ id, path }` | הכספת הנוכחית של החלון. |
-| `starter` | sendSync | `null` | פותח את חלון ה-starter. |
-| `is-dev` | sendSync | `false` | |
-| `version` | sendSync | string (למשל `"1.12.7"`) | |
+| channel        | כיוון                           | מה מוחזר                                                 | הערות                                   |
+| -------------- | ------------------------------- | -------------------------------------------------------- | --------------------------------------- |
+| `vault-list`   | sendSync                        | `{ [id]: { path, ts, open } }`                           | כל הכספות. ts = timestamp אחרון.        |
+| `vault-open`   | sendSync(path, createIfMissing) | `true` אם הצליח, string שגיאה אם לא                      | path הוא אבסולוטי. מחזיר `true` ולא id. |
+| `vault-remove` | sendSync(path)                  | `true`/`false`                                           | path אבסולוטי של הכספת.                 |
+| `vault-move`   | sendSync(oldPath, newPath)      | `""` אם הצליח, `"EVAULTOPEN"` אם פתוחה, string שגיאה אחר |                                         |
+| `vault`        | sendSync                        | `{ id, path }`                                           | הכספת הנוכחית של החלון.                 |
+| `starter`      | sendSync                        | `null`                                                   | פותח את חלון ה-starter.                 |
+| `is-dev`       | sendSync                        | `false`                                                  |                                         |
+| `version`      | sendSync                        | string (למשל `"1.12.7"`)                                 |                                         |
 
 **חשוב:** `vault-open` מוחזר `true` ולא id. ה-id נוצר ב-main process ונשאר שם. ה-renderer לא מקבל את ה-id בחזרה — הוא יכול למצוא אותו אחר כך דרך `vault-list`.
 
 **כיצד Obsidian שומר כספות (מ-main.js):** registry `P = { [16-char hex id]: { path, ts } }`, שמור ב-userData כ-JSON. הפונקציה `d(path)` פותחת כספת — בודקת אם הpath כבר ב-registry, אם כן — מעדכנת ts; אם לא — יוצרת id חדש.
 
 ### Electron stubs שצריך לדעת
+
 - `window.electron.remote.Menu.buildFromTemplate(template)` - **חייב להחזיר EventEmitter** (`.on('menu-will-close', fn)`). תיקנו ב-electron.js.
 - `window.electron.remote.nativeTheme` - חייב להיות chain-able (`.removeAllListeners().on()`).
 - `window.electron.remote.getCurrentWebContents()` - חייב לחזור על אותו object שיש לו `getZoomFactor`.
@@ -275,28 +287,47 @@ __owBootstrapCache.electron
 ### מתודות debugging שעבדו טוב
 
 **הזרקת trace wrappers דרך eval:**
+
 ```js
 const wrap = (obj, name, label) => {
   const orig = obj[name];
-  obj[name] = function(...args) {
-    console.log("[T]", label || name, "args:", args.map(a => a?.path || a?.name || String(a).slice(0, 50)).join(" | "));
+  obj[name] = function (...args) {
+    console.log(
+      "[T]",
+      label || name,
+      "args:",
+      args.map((a) => a?.path || a?.name || String(a).slice(0, 50)).join(" | "),
+    );
     try {
       const r = orig.apply(this, args);
-      if (r?.then) return r.then(
-        v => { console.log("[T]", label, "resolved"); return v; },
-        e => { console.log("[T]", label, "REJECTED:", e?.message); throw e; }
-      );
+      if (r?.then)
+        return r.then(
+          (v) => {
+            console.log("[T]", label, "resolved");
+            return v;
+          },
+          (e) => {
+            console.log("[T]", label, "REJECTED:", e?.message);
+            throw e;
+          },
+        );
       return r;
-    } catch (e) { console.log("[T]", label, "THREW:", e?.message); throw e; }
+    } catch (e) {
+      console.log("[T]", label, "THREW:", e?.message);
+      throw e;
+    }
   };
 };
 ```
+
 שימוש: `wrap(view, "acceptRename", "acceptRename")`.
 
 **גישה ל-eval מ-playwright-cli:**
+
 ```bash
 ssh gui-host "... && playwright-cli eval --raw 'async () => { ... return JSON.stringify(...); }'"
 ```
+
 - **חייב** `--raw` כדי לקבל את הreturn value נקי.
 - **חייב** `JSON.stringify` כי playwright-cli serializer לפעמים נחנק על objects מורכבים.
 - מתודות שמחזירות Promise - חייב async או .then()/.catch().
@@ -312,19 +343,24 @@ nohup npm run dev > /tmp/obsidian-web-server.log 2>&1 &
 `npm run dev` משתמש ב-`node --watch` המובנה — כל שינוי בקובץ JS בצד השרת גורם ל-restart אוטומטי. אין צורך ב-kill ידני.
 
 אם הפורט תפוס (שרת ישן עדיין רץ):
+
 ```bash
 kill $(lsof -ti :3000) 2>/dev/null
 ```
+
 אפשר לאמת: `curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/starter` — צריך 200.
 
 **גישה ל-server log חי:**
+
 - `tail -f /tmp/obsidian-web-server.log`
 - ה-middleware של request logging מסנן רק `/api`, `/i18n`, `/lib`. אם צריך יותר - להרחיב.
 
 **גישה ל-console messages ב-browser:**
+
 ```bash
 ssh gui-host "ls -t ~/Documents/playwright-cli/results/console-* | head -1 | xargs cat"
 ```
+
 - זה מצטבר עם הזמן. בואו לעיתים נרענן עם `goto` כדי לקבל console חדש.
 - שימושי לסנן ב-`grep TRACE` כדי לקבל רק את הtraces שלנו.
 
@@ -337,13 +373,16 @@ ssh gui-host "ls -t ~/Documents/playwright-cli/results/console-* | head -1 | xar
 **סטטוס:** הוקטן (אבל לא נפתר לחלוטין).
 
 #### תסמינים
+
 בלוג השרת מופיעים:
+
 ```
 GET 400 /api/fs/readdir?path=.obsidian%2Fworkspace.json
 GET 400 /api/fs/readdir?path=.obsidian%2Fappearance.json
 ```
 
 #### מה ידוע
+
 - אובסידיאן (איפשהו ב-`reconcileFile` או reconcile flow) קורא `readdir` על נתיב שהוא לפעמים קובץ.
 - בקוד יש `o = path.dirname(r); readdir(o)`. אם `r` הוא absolute path של קובץ, `dirname` יחזיר את התיקייה. אבל בפועל הקריאה מגיעה לשרת עם path של קובץ.
 - חשד: יש קוד נוסף שעושה `readdir` על path מקורי (לא dirname), כנראה ב-reconciliation flow כש-fs.watch event מגיע.
@@ -351,9 +390,11 @@ GET 400 /api/fs/readdir?path=.obsidian%2Fappearance.json
 - היום השרת מחזיר 404 (לא 400) כש-ENOTDIR, וזה משתיק את הצרחות בconsole.
 
 #### הסבר אפשרי לקריאה האחת שנותרה
+
 ב-startup, אובסידיאן עושה ניסיון לקרוא `.obsidian/workspace.json` כתיקייה (אולי לבדיקה אם זה backup folder?). זה התנהגות פנימית של אובסידיאן, לא משהו שאנחנו יכולים לתקן בצד שלנו.
 
 #### השפעה
+
 מינימלית. עכשיו 404, ואובסידיאן מתעלם מזה.
 
 ---
@@ -363,7 +404,9 @@ GET 400 /api/fs/readdir?path=.obsidian%2Fappearance.json
 **סטטוס:** מובן ונחשב **תקין** (לא באמת בעיה).
 
 #### תסמינים
+
 ב-console מופיעים בערך 15 שגיאות `404 Failed to load resource` על קבצים כמו:
+
 - `.obsidian/types.json`
 - `.obsidian/hotkeys.json`
 - `.obsidian/global-search.json`
@@ -372,13 +415,16 @@ GET 400 /api/fs/readdir?path=.obsidian%2Fappearance.json
 - וכו'
 
 #### למה זה קורה
+
 אובסידיאן בודק אם יש הגדרות שמורות לכל core plugin. אם אין - הוא יוצר עם defaults. ה-404 הוא **התנהגות תקינה** של ה-FS API (`ENOENT` → 404).
 
 #### למה לא נתקן
+
 - רוב הקבצים האלה **לעולם לא נוצרים** עד שמשתמש משנה הגדרות. אם נחזיר `{}` ריק ב-server, אובסידיאן עלול לפרש אותו אחרת.
 - הנכון: לדכא את ה-404 בגיש הconsole של הדפדפן (אבל זה רק קוסמטי).
 
 #### אפשרות עתידית: pre-flight bundle
+
 אנחנו יכולים להוסיף `/api/bootstrap` שמחזיר את **כל** קבצי `.obsidian/*.json` שקיימים במכה אחת. זה יחסוך 15+ HTTP round-trips ב-boot. הoptimization הזה ב-PLAN Phase 2.
 
 ---
@@ -388,16 +434,20 @@ GET 400 /api/fs/readdir?path=.obsidian%2Fappearance.json
 **סטטוס:** תוקן ל-MVP ב-2026-05-06. הסטארטר עובד עם prompt להזנת נתיב שרת.
 
 #### תסמינים
+
 תפריט "נהל כספות..." לא פותח שום דבר. כפתור "פתח כספת נוספת" לא עושה כלום.
 
 #### למה
+
 ה-electron shim שלנו לא מטפל ב-IPC channels של vault management:
+
 - `vault-open` (ipcMain.on)
 - `vault-list`
 - `vault-remove`
 - `vault-move`
 
 הבעיה המקורית הייתה תמיכה בכספת אחת קבועה (`id="default"`). עכשיו יש:
+
 - `server/vault-registry.js` ששומר registry ב-`data/vaults.json`.
 - API endpoints: `/api/vaults/list`, `/api/vaults/open`, `/api/vaults/remove`, `/api/vaults/move`.
 - `client/starter.html` שטוען shims ואז את `obsidian/starter.js` המקורי.
@@ -419,10 +469,13 @@ GET 400 /api/fs/readdir?path=.obsidian%2Fappearance.json
 **איך מצאנו:** עטיפת `workQueue.queue` ב-trace הראתה שיש 3 calls אבל רק 1 task starting (ולא finishing). מצא את `prototype.work` בקוד שעוטף `worker.postMessage` ב-Promise. בדיקה ש-`mc.worker` קיים אבל `mc.workerResolve` כבר function (פירוש: postMessage נקרא, מחכה לתשובה). `curl http://localhost:3000/worker.js` החזיר 404.
 
 **תיקון:** ב-`server/index.js` - הוספת route חדש שמגיש `/worker.js` ו-`/sim.js` מ-`obsidian/`:
+
 ```js
-const ROOT_FILES = ['worker.js', 'sim.js'];
+const ROOT_FILES = ["worker.js", "sim.js"];
 for (const f of ROOT_FILES) {
-  app.get('/' + f, (req, res) => res.sendFile(path.join(config.obsidianPath, f)));
+  app.get("/" + f, (req, res) =>
+    res.sendFile(path.join(config.obsidianPath, f)),
+  );
 }
 ```
 
@@ -468,8 +521,6 @@ for (const f of ROOT_FILES) {
 
 > נכון ל-2026-05-11 הגישה מיושמת בפועל: ה-mobile bundle נטען עם CapacitorAdapter, ו-3 build-time patches על `obsidian-mobile/app.js` נותנים לנו שליטה ב-layout (mobile/desktop) דרך `window.__owPlatformOverrides`. ראה "Build-time patch approach (implemented)" בהמשך הסעיף.
 
-
-
 ### הרקע
 
 ב-2026-05-06 חקרנו את ה-APK של Obsidian לאנדרואיד (גרסה 1.12.7) ומצאנו שה-desktop bundle וה-mobile bundle הם **שני קבצים שונים לחלוטין**, לא גרסה אחת עם feature flags. מסקנה: ה-desktop bundle (שאנחנו משתמשים בו) הוא הבחירה הלא-אידיאלית לweb wrapper. ה-mobile bundle מתוכנן בדיוק לסביבה שבה אין Electron ואין sync APIs.
@@ -477,6 +528,7 @@ for (const f of ROOT_FILES) {
 ### ⚠️ אזהרה חשובה: UI מיועד למובייל, לא לdesktop
 
 ה-mobile bundle מכיל UI שמתוכנן לטאצ', מסכים קטנים, ו-soft keyboard. פריסה על desktop browser עם ה-mobile bundle תיתן:
+
 - Ribbon ו-tabs בגודל touch-friendly (גדולים מדי לעכבר)
 - חלוקת panels לא מתאימה לחלון רחב
 - חסרים features של desktop בלבד (popout windows, advanced drag-and-drop וכו')
@@ -486,26 +538,29 @@ for (const f of ROOT_FILES) {
 ### מה גילינו על ה-APK (גרסה 1.12.7)
 
 **מבנה bundle:** (APK מחולץ ב-`/tmp/obsidian-mobile/apk_contents/assets/`)
-| קובץ | גודל | תפקיד |
-|---|---|---|
-| `public/app.js` | 3.6MB | Bundle ראשי (vs 7MB+ לdesktop) |
-| `native-bridge.js` | 48KB | Capacitor native bridge |
-| `public/worker.js` | 234KB | Web Worker — זהה לdesktop |
-| `public/app.css` | 581KB | עיצוב mobile-first |
-| `public/cordova.js` | 0 | stub ריק |
+
+| קובץ                | גודל  | תפקיד                          |
+| ------------------- | ----- | ------------------------------ |
+| `public/app.js`     | 3.6MB | Bundle ראשי (vs 7MB+ לdesktop) |
+| `native-bridge.js`  | 48KB  | Capacitor native bridge        |
+| `public/worker.js`  | 234KB | Web Worker — זהה לdesktop      |
+| `public/app.css`    | 581KB | עיצוב mobile-first             |
+| `public/cordova.js` | 0     | stub ריק                       |
 
 **הבדל קריטי — Platform flags:**
 Desktop bundle ו-mobile bundle מכילים קוד שונה לחלוטין:
+
 ```js
 // Desktop: (קיים רק ב-desktop bundle)
-Yl.isDesktopApp = true
-Yl.isDesktop    = true
+Yl.isDesktopApp = true;
+Yl.isDesktop = true;
 
 // Mobile: (קיים רק ב-mobile bundle, אחרי Capacitor init)
-bn.isMobileApp  = true
-bn.isMobile     = true
-bn.isAndroidApp = true  // אם Android
+bn.isMobileApp = true;
+bn.isMobile = true;
+bn.isAndroidApp = true; // אם Android
 ```
+
 `isMobileApp=!0` לא קיים ב-desktop bundle. `isDesktopApp=!0` לא קיים ב-mobile bundle.
 
 **Capacitor bridge — `nativePromise` הוא ה-single entry point:**
@@ -514,26 +569,33 @@ bn.isAndroidApp = true  // אם Android
 אם מחליפים רק את `nativePromise` — הכל עובד ללא שינוי ב-app.js.
 
 `getPlatform()` קובע פלטפורמה לפי:
+
 ```js
-win.androidBridge ? 'android' : win.webkit?.messageHandlers?.bridge ? 'ios' : 'web'
+win.androidBridge
+  ? "android"
+  : win.webkit?.messageHandlers?.bridge
+    ? "ios"
+    : "web";
 ```
+
 ולכן `isNativePlatform()` מוחזר `true` רק כשאחד מהם קיים.
 
 **Android vault directory:** `M.External = "EXTERNAL"` — כל פעולות ה-FS על הvault.
 
 **מנגנון watching על mobile (ללא `fs.watch` של Node):**
+
 ```js
 // הפעלה:
-Iv.startWatch({ directory: 'EXTERNAL', path: vaultPath })
+Iv.startWatch({ directory: "EXTERNAL", path: vaultPath });
 Iv.addListener("change", (event) => {
   // event.path = "/absolute/path/to/changed/file"
   const rel = event.path.substr(basePath.length);
   onFileChange(rel);
 });
 // עצירה:
-Iv.stopWatch()
+Iv.stopWatch();
 // אתחול מהיר (custom Obsidian API, לא standard Capacitor):
-Iv.watchAndStatAll({ directory: 'EXTERNAL', path: vaultPath })
+Iv.watchAndStatAll({ directory: "EXTERNAL", path: vaultPath });
 // → { children: [...] } — עץ קבצים שלם + מפעיל watcher בקריאה אחת
 // fallback אם מחזירים 404: startWatch + listRecursive
 ```
@@ -545,7 +607,7 @@ Iv.watchAndStatAll({ directory: 'EXTERNAL', path: vaultPath })
 
 ```js
 // app.js ~line 3668037:
-Yl.isMobile && o.addClass("is-mobile")
+Yl.isMobile && o.addClass("is-mobile");
 ```
 
 170 CSS rules תחת `.is-mobile` מופעלות **רק** כשPlatform.isMobile=true. בגרסת desktop שלנו — לא מופעלות בכלל, גם לא ב-viewport קטן.
@@ -558,37 +620,53 @@ Yl.isMobile && o.addClass("is-mobile")
 
 **חקרנו לעומק את השאלה: האם ניתן להשתמש בשכבות המובייל (Capacitor) תוך שמירה על UI דסקטופ?**
 
-#### הממצא המרכזי — Platform object structure (זהה בשני ה-bundles):
+#### הממצא המרכזי — Platform object structure (זהה בשני ה-bundles)
 
 ```js
-var Yl = {  // (Yl=desktop, bn=mobile — אותו אובייקט)
-    isDesktop: false,    isMobile: false,
-    isDesktopApp: false, isMobileApp: false,
-    isPhone: false,      isTablet: false,
-    // ...
-    get canSplit()          { return !Yl.isPhone },   // ← isPhone, לא isMobile!
-    get canDisplayRibbon()  { return !Yl.isPhone },   // ← isPhone, לא isMobile!
-    get canStackTabs()      { return !Yl.isPhone },   // ← isPhone, לא isMobile!
-    get canExportPdf()      { return Yl.isDesktopApp },
-    get canPopoutWindow()   { return Yl.isDesktopApp && Yl.isDesktop },
-    get canPinSidebar()     { return Yl.isMobile && !Yl.isPhone },
+var Yl = {
+  // (Yl=desktop, bn=mobile — אותו אובייקט)
+  isDesktop: false,
+  isMobile: false,
+  isDesktopApp: false,
+  isMobileApp: false,
+  isPhone: false,
+  isTablet: false,
+  // ...
+  get canSplit() {
+    return !Yl.isPhone;
+  }, // ← isPhone, לא isMobile!
+  get canDisplayRibbon() {
+    return !Yl.isPhone;
+  }, // ← isPhone, לא isMobile!
+  get canStackTabs() {
+    return !Yl.isPhone;
+  }, // ← isPhone, לא isMobile!
+  get canExportPdf() {
+    return Yl.isDesktopApp;
+  },
+  get canPopoutWindow() {
+    return Yl.isDesktopApp && Yl.isDesktop;
+  },
+  get canPinSidebar() {
+    return Yl.isMobile && !Yl.isPhone;
+  },
 };
 ```
 
 `isPhone` נקבע לפי **viewport width** (media query ~630px), **לא** לפי `isMobile`!
 
-#### מה שולט במה:
+#### מה שולט במה
 
-| Feature | נשלט ע"י | desktop viewport (≥630px) עם isMobile=true |
-|---|---|---|
-| Split panes | `!isPhone` | **עובד** ✅ |
-| Ribbon | `!isPhone` | **עובד** ✅ |
-| Tab stacking | `!isPhone` | **עובד** ✅ |
-| Mobile toolbar (is-mobile CSS) | `isMobile` | מופיע ⚠️ |
-| Export PDF | `isDesktopApp` | לא ב-mobile bundle ❌ |
-| Popout windows | `isDesktopApp && isDesktop` | לא ב-mobile bundle ❌ |
+| Feature                        | נשלט ע"י                    | desktop viewport (≥630px) עם isMobile=true |
+| ------------------------------ | --------------------------- | ------------------------------------------ |
+| Split panes                    | `!isPhone`                  | **עובד** ✅                                |
+| Ribbon                         | `!isPhone`                  | **עובד** ✅                                |
+| Tab stacking                   | `!isPhone`                  | **עובד** ✅                                |
+| Mobile toolbar (is-mobile CSS) | `isMobile`                  | מופיע ⚠️                                   |
+| Export PDF                     | `isDesktopApp`              | לא ב-mobile bundle ❌                      |
+| Popout windows                 | `isDesktopApp && isDesktop` | לא ב-mobile bundle ❌                      |
 
-#### EmulateMobile בddesktop bundle — מה עושה בפועל:
+#### EmulateMobile בddesktop bundle — מה עושה בפועל
 
 ```js
 // desktop app.js (offset 3666422):
@@ -605,7 +683,7 @@ Yl.isMobile && body.addClass("is-mobile");   // ← is-mobile נוסף כאן
 
 חשוב: EmulateMobile **לא** משנה `isDesktopApp` (נשאר true מה-entry IIFE).
 
-#### Mobile bundle — entry IIFE (offset 3728028 מתוך 3,754,511 bytes):
+#### Mobile bundle — entry IIFE (offset 3728028 מתוך 3,754,511 bytes)
 
 ```js
 // case 0: await Promise.all([fv, Av.getInfo(), Nv.getInfo()])
@@ -625,12 +703,12 @@ Dv && document.body.addClass("is-android");
 
 **לא, ללא שינוי ב-app.js** — אבל הבעיה פחות חמורה ממה שנראה:
 
-| גישה | Capacitor adapter | Split panes (desktop viewport) | Mobile toolbar | isDesktopApp |
-|---|---|---|---|---|
-| A: Desktop bundle כרגיל | ❌ FileSystemAdapter | ✅ | ❌ | ✅ |
-| B: Desktop + EmulateMobile תמיד | ❌ FileSystemAdapter | ✅ (isPhone=false) | ⚠️ is-mobile | ✅ |
-| C: Mobile bundle (obsidian-web-mobile) | ✅ Capacitor | ✅ (isPhone=false!) | ⚠️ is-mobile | ❌ |
-| D: Mobile bundle + patch entry IIFE | ✅ Capacitor | ✅ | ❌ | ✅ |
+| גישה                                   | Capacitor adapter    | Split panes (desktop viewport) | Mobile toolbar | isDesktopApp |
+| -------------------------------------- | -------------------- | ------------------------------ | -------------- | ------------ |
+| A: Desktop bundle כרגיל                | ❌ FileSystemAdapter | ✅                             | ❌             | ✅           |
+| B: Desktop + EmulateMobile תמיד        | ❌ FileSystemAdapter | ✅ (isPhone=false)             | ⚠️ is-mobile   | ✅           |
+| C: Mobile bundle (obsidian-web-mobile) | ✅ Capacitor         | ✅ (isPhone=false!)            | ⚠️ is-mobile   | ❌           |
+| D: Mobile bundle + patch entry IIFE    | ✅ Capacitor         | ✅                             | ❌             | ✅           |
 
 **גישה C (mobile bundle על viewport דסקטופ):** split panes ו-ribbon עדיין עובדים כי הם תלויים ב-`isPhone` (viewport-based), לא ב-`isMobile`. המגבלה העיקרית היא mobile toolbar ו-`isDesktopApp=false` (ללא export PDF ו-popout windows).
 
@@ -654,6 +732,7 @@ Dv && document.body.addClass("is-android");
 **עיקרון:** שיכפול של `obsidian-web`, החלפת electron shims ב-Capacitor shim, החלפת desktop bundle במobile bundle.
 
 **מה משתנה ב-client:**
+
 - `index.html`: סדר טעינה — `native-bridge.js` → `shims/capacitor.js` → mobile `app.js`
 - `shims/capacitor.js` — קובץ מרכזי חדש (~200 שורות):
   - לאחר טעינת `native-bridge.js`, מחליף `Capacitor.nativePromise` ו-`getPlatform`
@@ -663,33 +742,35 @@ Dv && document.body.addClass("is-android");
 - `boot.js`: מפושט — ללא electron shim, עם path/util/crypto/buffer לפלאגינים
 
 **מה משתנה ב-server (מינימלי):**
+
 - `PUT /api/fs/append` — chunks של קבצים בינאריים גדולים (>5MB, כתיבה בחלקים)
 - `POST /api/fs/copy` — העתקת קובץ
 - שאר ה-API (`/api/fs/read`, `/api/fs/write`, `/api/watch`, וכו') — **זהה לחלוטין**
 
 **מיפוי Capacitor → HTTP API:**
 
-| Capacitor | HTTP | קיים? |
-|---|---|---|
-| `readFile({encoding:'utf8'})` | `GET /api/fs/read?encoding=utf8` | ✅ |
-| `readFile` בינארי | `GET /api/fs/read` → base64 | ✅ |
-| `readFile` >5MB | `fetch(getUri(path))` → `/api/fs/read` | ✅ |
-| `writeFile` | `PUT /api/fs/write` | ✅ |
-| `appendFile` | `PUT /api/fs/append` | ❌ חדש |
-| `readdir` | `GET /api/fs/readdir` (format שונה) | ✅ |
-| `stat` | `GET /api/fs/stat` | ✅ |
-| `mkdir` | `POST /api/fs/mkdir` | ✅ |
-| `deleteFile` | `DELETE /api/fs/unlink` | ✅ |
-| `rename` | `POST /api/fs/rename` | ✅ |
-| `copy` | `POST /api/fs/copy` | ❌ חדש |
-| `getUri` | synthetic URL (`/api/fs/read?...`) | — |
-| `watchAndStatAll` | 404 → fallback אוטומטי | — |
-| `startWatch` + `addListener("change")` | WebSocket `/api/watch` | ✅ |
-| `stopWatch` | סגירת WebSocket | ✅ |
+| Capacitor                              | HTTP                                   | קיים?  |
+| -------------------------------------- | -------------------------------------- | ------ |
+| `readFile({encoding:'utf8'})`          | `GET /api/fs/read?encoding=utf8`       | ✅     |
+| `readFile` בינארי                      | `GET /api/fs/read` → base64            | ✅     |
+| `readFile` >5MB                        | `fetch(getUri(path))` → `/api/fs/read` | ✅     |
+| `writeFile`                            | `PUT /api/fs/write`                    | ✅     |
+| `appendFile`                           | `PUT /api/fs/append`                   | ❌ חדש |
+| `readdir`                              | `GET /api/fs/readdir` (format שונה)    | ✅     |
+| `stat`                                 | `GET /api/fs/stat`                     | ✅     |
+| `mkdir`                                | `POST /api/fs/mkdir`                   | ✅     |
+| `deleteFile`                           | `DELETE /api/fs/unlink`                | ✅     |
+| `rename`                               | `POST /api/fs/rename`                  | ✅     |
+| `copy`                                 | `POST /api/fs/copy`                    | ❌ חדש |
+| `getUri`                               | synthetic URL (`/api/fs/read?...`)     | —      |
+| `watchAndStatAll`                      | 404 → fallback אוטומטי                 | —      |
+| `startWatch` + `addListener("change")` | WebSocket `/api/watch`                 | ✅     |
+| `stopWatch`                            | סגירת WebSocket                        | ✅     |
 
 **15 מתוך 15 calls ממופים. 2 endpoints חדשים בשרת.**
 
 **מה צפוי לעבוד בmobile bundle שלא עובד עכשיו (desktop):**
+
 - Templater — `isMobile=true` → דלג על child_process לחלוטין
 - כל plugin שבודק `Platform.isMobile` לפני desktop-only features
 - `adapter instanceof FileSystemAdapter` → `false` → plugins לוקחים mobile code paths
@@ -701,11 +782,11 @@ Dv && document.body.addClass("is-android");
 
 **הפתרון:** שלושה patches על `obsidian-mobile/app.js` בזמן ההורדה/חילוץ (במודול `scripts/patch-obsidian-mobile.js`):
 
-| # | regex | מה משיג |
-|---|---|---|
-| 1. `expose-platform` | `var (\w{1,3})=\{isDesktop:!1,isMobile:!1,isDesktopApp:!1` → `var $1=window.__owPlatform={isDesktop:!1,...` | חושף את אובייקט ה-Platform כ-global, כך שניתן לקרוא/לכתוב אליו מבחוץ |
-| 2. `iife-overrides` | `\1.isMobileApp=!0,\1.isMobile=!0,\1.isAndroidApp=Dv,\1.isIosApp=Tv,` → `Object.assign($1,{isMobileApp:!0,isMobile:!0,...},window.__owPlatformOverrides\|\|{}),` | במקום הצבות לא-מותנות, ממזג גם את ה-overrides שהוגדרו ב-`window.__owPlatformOverrides` (כ-argument אחרון של `Object.assign` הוא מנצח את ברירות המחדל) |
-| 3. `is-mobile-class` | `document.body.addClass("is-mobile"),` → `window.__owPlatform.isMobile&&document.body.addClass("is-mobile"),` | מתנה את הוספת ה-class בערך post-override של `isMobile` |
+| #                    | regex                                                                                                                                                            | מה משיג                                                                                                                                               |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1. `expose-platform` | `var (\w{1,3})=\{isDesktop:!1,isMobile:!1,isDesktopApp:!1` → `var $1=window.__owPlatform={isDesktop:!1,...`                                                      | חושף את אובייקט ה-Platform כ-global, כך שניתן לקרוא/לכתוב אליו מבחוץ                                                                                  |
+| 2. `iife-overrides`  | `\1.isMobileApp=!0,\1.isMobile=!0,\1.isAndroidApp=Dv,\1.isIosApp=Tv,` → `Object.assign($1,{isMobileApp:!0,isMobile:!0,...},window.__owPlatformOverrides\|\|{}),` | במקום הצבות לא-מותנות, ממזג גם את ה-overrides שהוגדרו ב-`window.__owPlatformOverrides` (כ-argument אחרון של `Object.assign` הוא מנצח את ברירות המחדל) |
+| 3. `is-mobile-class` | `document.body.addClass("is-mobile"),` → `window.__owPlatform.isMobile&&document.body.addClass("is-mobile"),`                                                    | מתנה את הוספת ה-class בערך post-override של `isMobile`                                                                                                |
 
 הregex של patch 2 משתמש ב-backreferences (`\1`) כדי לוודא שכל ארבע ההצבות משתמשות באותו שם משתנה מינימוף, ועומד גם אם המינוף ישנה בעתיד את שם המשתנה.
 
@@ -726,7 +807,9 @@ Dv && document.body.addClass("is-android");
 ## רעיונות לעתיד
 
 ### Pre-flight bundle (Phase 2)
+
 endpoint יחיד שמחזיר את כל הקבצים של `.obsidian/` במכה אחת:
+
 ```
 GET /api/bootstrap → {
   "app.json": "...",
@@ -735,18 +818,23 @@ GET /api/bootstrap → {
   ...
 }
 ```
+
 החיסכון: 15+ HTTP round-trips ב-boot, כל אחד עם קישוריות tunnel = 100-300ms.
 
 ### Client-side cache עם fs.watch invalidation (Phase 2)
+
 LRU cache ב-shim של `original-fs`:
+
 - כל `read()`/`stat()` מאחסן את התוצאה לפי path.
 - כש-fs.watch מקבל event על path, מנקה את הentry שלו.
 - חיסכון: 90% מהקריאות החוזרות.
 
 ### זיהוי "stuck workQueue" אוטומטית
+
 אם אנחנו רואים `inProgressTaskCount > 0` במשך 30 שניות בלי שינוי, להפעיל אוטומטית את ה-workaround מ-B-001 ולהתריע ב-console. לפחות עד שנמצא את הבעיה האמיתית.
 
 ### Service worker offline mode (Phase 5)
+
 - cache של `obsidian/app.js` ו-static assets.
 - read-only mode כשאין רשת.
 
@@ -772,24 +860,31 @@ Error: Filesystem is not implemented on android
 
 ```js
 function registerPlugin(pluginName) {
-  return new Proxy({}, {
-    get(target, methodName) {
-      // 1. חפש את הheaders של ה-plugin
-      const header = c.PluginHeaders.find(h => h.name === pluginName);
-      if (!header) throw new Error(pluginName + ' is not implemented on android');
+  return new Proxy(
+    {},
+    {
+      get(target, methodName) {
+        // 1. חפש את הheaders של ה-plugin
+        const header = c.PluginHeaders.find((h) => h.name === pluginName);
+        if (!header)
+          throw new Error(pluginName + " is not implemented on android");
 
-      // 2. חפש את ה-method ברשימת ה-methods
-      const meta = header.methods.find(m => m.name === methodName);
-      if (!meta) throw new Error(methodName + ' is not implemented on ' + pluginName);
+        // 2. חפש את ה-method ברשימת ה-methods
+        const meta = header.methods.find((m) => m.name === methodName);
+        if (!meta)
+          throw new Error(methodName + " is not implemented on " + pluginName);
 
-      // 3. לפי rtype, החזר wrapper שקורא ל-nativePromise / nativeCallback
-      if (meta.rtype === 'promise') {
-        return (opts) => Capacitor.nativePromise(pluginName, methodName, opts);
-      } else if (meta.rtype === 'callback') {
-        return (opts, cb) => Capacitor.nativeCallback(pluginName, methodName, opts, cb);
-      }
-    }
-  });
+        // 3. לפי rtype, החזר wrapper שקורא ל-nativePromise / nativeCallback
+        if (meta.rtype === "promise") {
+          return (opts) =>
+            Capacitor.nativePromise(pluginName, methodName, opts);
+        } else if (meta.rtype === "callback") {
+          return (opts, cb) =>
+            Capacitor.nativeCallback(pluginName, methodName, opts, cb);
+        }
+      },
+    },
+  );
 }
 ```
 
@@ -801,24 +896,26 @@ function registerPlugin(pluginName) {
 
 המשמעות: אנחנו צריכים שני דברים נפרדים, ושניהם חייבים להיות מוכנים בזמן הנכון:
 
-| מי | למה צריך | מתי לחשוף |
-|---|---|---|
-| `window.androidBridge` | כדי ש-`native-bridge.js` יבחר platform=android בזמן הinit שלו | **לפני** `native-bridge.js` נטען |
-| `window.Capacitor.PluginHeaders` | כדי ש-`registerPlugin()` Proxy ידע אילו methods קיימים | **אחרי** ש-`native-bridge.js` רץ ויצר את `window.Capacitor` |
+| מי                               | למה צריך                                                      | מתי לחשוף                                                   |
+| -------------------------------- | ------------------------------------------------------------- | ----------------------------------------------------------- |
+| `window.androidBridge`           | כדי ש-`native-bridge.js` יבחר platform=android בזמן הinit שלו | **לפני** `native-bridge.js` נטען                            |
+| `window.Capacitor.PluginHeaders` | כדי ש-`registerPlugin()` Proxy ידע אילו methods קיימים        | **אחרי** ש-`native-bridge.js` רץ ויצר את `window.Capacitor` |
 
 ה-shim שלנו עושה את שניהם: `androidBridge` מוגדר ב-IIFE בראש הקובץ (לפני `<script src="native-bridge.js">`), ו-`PluginHeaders` מוגדר ב-`patchCapacitor()` שרץ מיד אחרי שה-IIFE מסיים (וגם שוב ב-`DOMContentLoaded`, ליתר ביטחון).
 
 ### ההבחנה בין `rtype: 'promise'` ל-`rtype: 'callback'`
 
-| rtype | Wrapper שmproxy מחזיר | מתי בשימוש |
-|---|---|---|
-| `promise` | `(opts) => nativePromise(plugin, method, opts)` | כמעט כל ה-API. מחזיר `Promise<result>`. |
+| rtype      | Wrapper שmproxy מחזיר                                    | מתי בשימוש                                                                                         |
+| ---------- | -------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `promise`  | `(opts) => nativePromise(plugin, method, opts)`          | כמעט כל ה-API. מחזיר `Promise<result>`.                                                            |
 | `callback` | `(opts, cb) => nativeCallback(plugin, method, opts, cb)` | רק לאירועים מתמשכים — למשל `Filesystem.addListener('change', cb)`. ה-callback נקרא בכל event חוזר. |
 
 ב-shim שלנו, כמעט הכל הוא `promise`. ה-helper `pm(name)` ב-`patchCapacitor` בנוי לזה:
 
 ```js
-function pm(name) { return { name, rtype: 'promise' }; }
+function pm(name) {
+  return { name, rtype: "promise" };
+}
 ```
 
 `Filesystem.addListener` היה צריך להיות `callback` כדי לקבל events מרובים — אך כרגע אנחנו מצהירים עליו כ-`promise` ומשתמשים ב-implementation שלנו ב-`capacitor-shim.js` ש-bypass-ssa את ה-bridge (`Filesystem.addListener` ב-JS מחזיר Promise עם `{remove}`, ה-callback נקרא ישירות מה-WebSocket — לא דרך `fromNative`). זה עובד כי ב-`patchCapacitor` אנחנו גם דורסים את `cap.Plugins.Filesystem` ישירות, אז ה-Proxy לעולם לא נקרא ל-`addListener`.
@@ -846,8 +943,8 @@ function pm(name) { return { name, rtype: 'promise' }; }
 
 הליבה האמיתית של ה-shim. כל קריאה הופכת לבקשת HTTP מול server/api/fs.js או WebSocket מול server/api/watch.js.
 
-| Plugin | Methods | קורא ל |
-|---|---|---|
+| Plugin         | Methods                                                                                                                                                                                    | קורא ל                         |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------ |
 | **Filesystem** | `readFile`, `writeFile`, `appendFile`, `stat`, `readdir`, `mkdir`, `rmdir`, `rename`, `copy`, `deleteFile`, `trash`, `getUri`, `startWatch`, `stopWatch`, `watchAndStatAll`, `addListener` | `/api/fs/*`, `/api/watch` (WS) |
 
 `watchAndStatAll` משתמש ב-bootstrap (`/api/bootstrap?full=1`) כדי להחזיר snapshot של כל ה-tree + לפתוח watcher בקריאה אחת.
@@ -856,11 +953,11 @@ function pm(name) { return { name, rtype: 'promise' }; }
 
 אין צורך בשרת — ה-shim פשוט עוטף API קיים בדפדפן.
 
-| Plugin | Methods | עוטף |
-|---|---|---|
-| **Clipboard** | `read`, `write` | `navigator.clipboard.readText` / `writeText` |
-| **Browser** | `open`, `close` | `window.open(url, '_blank', 'noopener')` |
-| **Preferences** | `get`, `set`, `remove`, `clear`, `keys` | `localStorage` עם prefix `cap:` |
+| Plugin            | Methods                                                          | עוטף                                                     |
+| ----------------- | ---------------------------------------------------------------- | -------------------------------------------------------- |
+| **Clipboard**     | `read`, `write`                                                  | `navigator.clipboard.readText` / `writeText`             |
+| **Browser**       | `open`, `close`                                                  | `window.open(url, '_blank', 'noopener')`                 |
+| **Preferences**   | `get`, `set`, `remove`, `clear`, `keys`                          | `localStorage` עם prefix `cap:`                          |
 | **SecureStorage** | `get`, `set`, `remove`, `isKeyExists`, `getPlatformSupportLevel` | `localStorage` עם prefix `sec:` (לא מוצפן באמת — אזהרה!) |
 
 **הערה לגבי SecureStorage:** למרות השם, אין כאן הצפנה. הוא קיים כדי שפלאגינים שמשתמשים ב-`SecureStorage` יחיו, אך לא לאחסון של סודות אמיתיים.
@@ -869,28 +966,28 @@ function pm(name) { return { name, rtype: 'promise' }; }
 
 המתודות פועלות, אך הנתון המוחזר הוא קבוע / נגזר מ-API דפדפן בסיסי. אין side effects.
 
-| Plugin | Methods | המוחזר |
-|---|---|---|
-| **Device** | `getInfo`, `getId`, `getLanguageCode` | `{ platform: 'android', model: 'Browser', osVersion: '12', ... }`, `navigator.language` |
-| **App** | `getInfo`, `getState`, `getLaunchUrl`, `isInstalledFromStore`, `getFonts`, ... | `{ name: 'Obsidian', version: '1.12.7', id: 'md.obsidian', build: '0' }` |
+| Plugin     | Methods                                                                        | המוחזר                                                                                  |
+| ---------- | ------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------- |
+| **Device** | `getInfo`, `getId`, `getLanguageCode`                                          | `{ platform: 'android', model: 'Browser', osVersion: '12', ... }`, `navigator.language` |
+| **App**    | `getInfo`, `getState`, `getLaunchUrl`, `isInstalledFromStore`, `getFonts`, ... | `{ name: 'Obsidian', version: '1.12.7', id: 'md.obsidian', build: '0' }`                |
 
 ### Noop stubs — מחזירים success, לא עושים כלום
 
 לא רלוונטיים ב-web. הם קיימים רק כדי שקוד שמצפה אליהם לא ייפול.
 
-| Plugin | Methods | למה noop |
-|---|---|---|
-| **SplashScreen** | `show`, `hide` | אין splash screen בweb |
-| **StatusBar** | `setStyle`, `setBackgroundColor`, `show`, `hide`, `getInfo` | אין status bar — UA chrome מטופל ע"י הדפדפן |
-| **Keyboard** | `show`, `hide`, `addListener`, `setResizeMode`, ... | virtual keyboard מטופל ע"י ה-OS, לא הדפדפן |
-| **KeepAwake** | `keepAwake`, `allowSleep`, `isKeptAwake` | אין wake-lock נדרש; אם יידרש — `navigator.wakeLock.request()` |
-| **Haptics** | `impact`, `notification`, `vibrate`, `selection*` | לפעמים `navigator.vibrate` אפשרי. כרגע noop. |
-| **RateApp** | `requestReview` | אין app store למעבר אליו |
+| Plugin           | Methods                                                     | למה noop                                                      |
+| ---------------- | ----------------------------------------------------------- | ------------------------------------------------------------- |
+| **SplashScreen** | `show`, `hide`                                              | אין splash screen בweb                                        |
+| **StatusBar**    | `setStyle`, `setBackgroundColor`, `show`, `hide`, `getInfo` | אין status bar — UA chrome מטופל ע"י הדפדפן                   |
+| **Keyboard**     | `show`, `hide`, `addListener`, `setResizeMode`, ...         | virtual keyboard מטופל ע"י ה-OS, לא הדפדפן                    |
+| **KeepAwake**    | `keepAwake`, `allowSleep`, `isKeptAwake`                    | אין wake-lock נדרש; אם יידרש — `navigator.wakeLock.request()` |
+| **Haptics**      | `impact`, `notification`, `vibrate`, `selection*`           | לפעמים `navigator.vibrate` אפשרי. כרגע noop.                  |
+| **RateApp**      | `requestReview`                                             | אין app store למעבר אליו                                      |
 
 ### TODO / known limitations
 
-| Plugin.method | מצב | מה צריך |
-|---|---|---|
+| Plugin.method    | מצב                | מה צריך                                                                                                                                    |
+| ---------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | `App.requestUrl` | מחזיר `{}` (no-op) | implementation אמיתי דרך `fetch()` — נדרש עבור LiveSync (CouchDB calls). ראה PLAN.md "Updated approach (2026-05-11): direct fetch + CORS". |
 
 ### Call flow
@@ -912,9 +1009,9 @@ function pm(name) { return { name, rtype: 'promise' }; }
 נחשף ע"י Patch #1 (`expose-platform`). הוא **אותו אובייקט** שה-bundle משתמש בו פנימית כדי לבדוק `isMobile`, `isPhone`, `isDesktopApp` וכו'. אין `getter` ו-`setter`; זו השמה ישירה.
 
 ```js
-window.__owPlatform.isMobile      // true / false  (קריא)
-window.__owPlatform.isPhone       // נגזר מ-viewport (~630px), קריא לרוב
-window.__owPlatform.isDesktopApp  // false ב-mobile bundle תמיד
+window.__owPlatform.isMobile; // true / false  (קריא)
+window.__owPlatform.isPhone; // נגזר מ-viewport (~630px), קריא לרוב
+window.__owPlatform.isDesktopApp; // false ב-mobile bundle תמיד
 ```
 
 **ניתן לכתוב אליו** — אבל זה לא retroactive. שינוי `__owPlatform.isMobile = false` אחרי שה-app נטען לא יזיז את ה-`is-mobile` class מה-body, ולא ימחזר UI שכבר נבנה. הוא רק ישפיע על קוד שבודק את ה-flag בעתיד (למשל לוגיקת `canSplit` של workspace חדש). הדרך הבטוחה לשנות layout: לעדכן `__owPlatformOverrides` ו-reload.
@@ -925,8 +1022,11 @@ window.__owPlatform.isDesktopApp  // false ב-mobile bundle תמיד
 
 ```js
 // ה-bundle אחרי patch 2:
-Object.assign(bn, { isMobileApp:!0, isMobile:!0, isAndroidApp:Dv, isIosApp:Tv },
-              window.__owPlatformOverrides || {});
+Object.assign(
+  bn,
+  { isMobileApp: !0, isMobile: !0, isAndroidApp: Dv, isIosApp: Tv },
+  window.__owPlatformOverrides || {},
+);
 ```
 
 `Object.assign` overload האחרון מנצח, אז כל מה ש-`__owPlatformOverrides` מכיל מנצח את ברירות המחדל של ה-bundle.
@@ -945,12 +1045,12 @@ window.__owPlatformOverrides = { isMobile: false };
 
 ה-key הזה הוא המקום היחיד ש-`client-mobile/boot.js` קורא ממנו את ההחלטה:
 
-| Value | תוצאה |
-|---|---|
-| `mobile` | `__owPlatformOverrides = { isMobile: true }` — mobile UI תמיד |
-| `desktop` | `__owPlatformOverrides = { isMobile: false }` — desktop UI תמיד |
+| Value               | תוצאה                                                               |
+| ------------------- | ------------------------------------------------------------------- |
+| `mobile`            | `__owPlatformOverrides = { isMobile: true }` — mobile UI תמיד       |
+| `desktop`           | `__owPlatformOverrides = { isMobile: false }` — desktop UI תמיד     |
 | `auto` (ברירת מחדל) | viewport-based: `< 900` רוחב או `< 600` גובה → mobile, אחרת desktop |
-| חסר | `auto` |
+| חסר                 | `auto`                                                              |
 
 `computeLayoutMode()` ב-`client-mobile/boot.js:60-67` מבצע את החישוב. ה-`obsidian-web-layout` plugin (ribbon icon + commands) הוא ה-UI שכותב ל-key הזה ועושה reload.
 
@@ -960,22 +1060,22 @@ window.__owPlatformOverrides = { isMobile: false };
 
 ```js
 // לקרוא mode נוכחי:
-const mode = localStorage.getItem('obsidian-web:layout-mode') || 'auto';
+const mode = localStorage.getItem("obsidian-web:layout-mode") || "auto";
 
 // לקבוע mode + reload (זו הדרך היחידה שמשפיעה על UI מבני):
-localStorage.setItem('obsidian-web:layout-mode', 'desktop');
+localStorage.setItem("obsidian-web:layout-mode", "desktop");
 location.reload();
 
 // לקרוא Platform flags כפי שהם כרגע:
 const isMobile = window.__owPlatform?.isMobile;
-const isPhone  = window.__owPlatform?.isPhone;
+const isPhone = window.__owPlatform?.isPhone;
 ```
 
 **ל-debugging מ-DevTools:**
 
 ```js
-__owPlatform        // ה-object השלם — בדוק 30+ flags
-__owPlatformOverrides // מה שהגדרנו ב-boot.js
+__owPlatform; // ה-object השלם — בדוק 30+ flags
+__owPlatformOverrides; // מה שהגדרנו ב-boot.js
 ```
 
 ### מגבלות
@@ -1016,16 +1116,16 @@ GET /api/fs/read?path=.obsidian/plugins/<id>/main.js
 ["dataview", "obsidian-web-layout"]
 ```
 
-| Operation | Behavior |
-|---|---|
-| GET `/read` | קוראים את הvault file (או `[]` אם לא קיים), ממזגים את כל ה-`getSystemPluginIds()`. הfront-end רואה תמיד את ה-system plugins כ-enabled. |
-| PUT `/write` | מקבלים array מהfront-end, מסירים את כל ה-system plugin ids, ושומרים רק את השאר ל-disk. ה-vault שומר ניטרלי. |
+| Operation    | Behavior                                                                                                                               |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
+| GET `/read`  | קוראים את הvault file (או `[]` אם לא קיים), ממזגים את כל ה-`getSystemPluginIds()`. הfront-end רואה תמיד את ה-system plugins כ-enabled. |
+| PUT `/write` | מקבלים array מהfront-end, מסירים את כל ה-system plugin ids, ושומרים רק את השאר ל-disk. ה-vault שומר ניטרלי.                            |
 
 זה מאפשר תרחיש: משתמש "מבטל" את ה-system plugin דרך UI → Obsidian כותב array חדש ללא ה-id → השרת רואה שאין שינוי אמיתי. בטעינה הבאה ה-id חוזר. כלומר **disable של system plugin אינו persistent** (מגבלה ידועה, ראה למטה).
 
 ### Synthesized directory stat + readdir
 
-ה-bundle של Obsidian עושה `stat('.obsidian/plugins')` *לפני* `readdir`, ואם זה 404 — מפסיק שם. לכן:
+ה-bundle של Obsidian עושה `stat('.obsidian/plugins')` _לפני_ `readdir`, ואם זה 404 — מפסיק שם. לכן:
 
 #### Synthesized `stat` של `.obsidian/plugins`
 
@@ -1073,11 +1173,11 @@ GET /api/fs/readdir?path=.obsidian/plugins
 
 ### Limitations
 
-| Limitation | סטטוס |
-|---|---|
-| Disable של system plugin דרך UI לא persist (re-injected each load) | בכוונה — system plugins הם "always on" עבור obsidian-web. |
-| לא ניתן לעדכן system plugin בלי restart של השרת | `systemPlugins.init()` סורק רק ב-startup; שינוי ב-`<repo>/plugins/` דורש restart. |
-| ה-`data.json` של system plugin נכתב ל-vault (לא ל-repo) | זה נכון — settings הם per-vault. ה-repo מכיל code; ה-vault מכיל state. |
+| Limitation                                                         | סטטוס                                                                             |
+| ------------------------------------------------------------------ | --------------------------------------------------------------------------------- |
+| Disable של system plugin דרך UI לא persist (re-injected each load) | בכוונה — system plugins הם "always on" עבור obsidian-web.                         |
+| לא ניתן לעדכן system plugin בלי restart של השרת                    | `systemPlugins.init()` סורק רק ב-startup; שינוי ב-`<repo>/plugins/` דורש restart. |
+| ה-`data.json` של system plugin נכתב ל-vault (לא ל-repo)            | זה נכון — settings הם per-vault. ה-repo מכיל code; ה-vault מכיל state.            |
 
 ### Use cases עתידיים
 
@@ -1154,7 +1254,7 @@ LiveSync הוא plugin של אובסידיאן שמסנכרן את הכספת ע
 הבעיה היא בשורה הזו ב-`invalidateCacheEntry` (`src/client-mobile/cache-invalidation.js`):
 
 ```js
-const parent = p.includes('/') ? p.substring(0, p.lastIndexOf('/')) : '';
+const parent = p.includes("/") ? p.substring(0, p.lastIndexOf("/")) : "";
 delete cache.dirs[parent];
 ```
 
