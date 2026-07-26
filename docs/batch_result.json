@@ -6,8 +6,8 @@
   "rate_limit_stopped": true,
   "rate_limiter_final": {
     "current_delay_s": 120.0,
-    "total_requests": 5,
-    "total_429s": 5,
+    "total_requests": 11,
+    "total_429s": 10,
     "success_streak": 0
   },
   "files": [],
