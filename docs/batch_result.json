@@ -1,0 +1,21 @@
+{
+  "root": "C:\\Users\\fjuni\\OneDrive\\Documentos\\GitHub\\obsidian-web\\docs",
+  "total_processed": 0,
+  "total_errors": 1,
+  "total_pending": 25,
+  "rate_limit_stopped": true,
+  "rate_limiter_final": {
+    "current_delay_s": 120.0,
+    "total_requests": 5,
+    "total_429s": 5,
+    "success_streak": 0
+  },
+  "files": [],
+  "errors": [
+    {
+      "file": "dev-setup.md",
+      "error": "HTTP 429 from http://localhost:1188/translate. DeepL blocked IP after 5 retries. Wait a few minutes and resume with --resume.",
+      "type": "rate_limit"
+    }
+  ]
+}
