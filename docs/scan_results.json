@@ -1,0 +1,190 @@
+{
+  "root": "C:\\Users\\fjuni\\OneDrive\\Documentos\\GitHub\\obsidian-web\\docs",
+  "extensions": [
+    ".md"
+  ],
+  "total_files": 25,
+  "translated_files": 0,
+  "pending_files": 25,
+  "existing_translations": 0,
+  "coverage_percent": 0.0,
+  "files": [
+    {
+      "path": "dev-setup.md",
+      "absolute": "C:\\Users\\fjuni\\OneDrive\\Documentos\\GitHub\\obsidian-web\\docs\\dev-setup.md",
+      "size_bytes": 7084,
+      "has_translation": false
+    },
+    {
+      "path": "investigations.md",
+      "absolute": "C:\\Users\\fjuni\\OneDrive\\Documentos\\GitHub\\obsidian-web\\docs\\investigations.md",
+      "size_bytes": 75296,
+      "has_translation": false
+    },
+    {
+      "path": "system-plugin-dev-guide.md",
+      "absolute": "C:\\Users\\fjuni\\OneDrive\\Documentos\\GitHub\\obsidian-web\\docs\\system-plugin-dev-guide.md",
+      "size_bytes": 8165,
+      "has_translation": false
+    },
+    {
+      "path": "walkthrough.md",
+      "absolute": "C:\\Users\\fjuni\\OneDrive\\Documentos\\GitHub\\obsidian-web\\docs\\walkthrough.md",
+      "size_bytes": 162742,
+      "has_translation": false
+    },
+    {
+      "path": "decisions\\obsidian-web.md",
+      "absolute": "C:\\Users\\fjuni\\OneDrive\\Documentos\\GitHub\\obsidian-web\\docs\\decisions\\obsidian-web.md",
+      "size_bytes": 21296,
+      "has_translation": false
+    },
+    {
+      "path": "plans\\EXECUTOR_DISPATCH.md",
+      "absolute": "C:\\Users\\fjuni\\OneDrive\\Documentos\\GitHub\\obsidian-web\\docs\\plans\\EXECUTOR_DISPATCH.md",
+      "size_bytes": 5254,
+      "has_translation": false
+    },
+    {
+      "path": "plans\\future-direction-client-only.md",
+      "absolute": "C:\\Users\\fjuni\\OneDrive\\Documentos\\GitHub\\obsidian-web\\docs\\plans\\future-direction-client-only.md",
+      "size_bytes": 4337,
+      "has_translation": false
+    },
+    {
+      "path": "plans\\livesync-implementation.md",
+      "absolute": "C:\\Users\\fjuni\\OneDrive\\Documentos\\GitHub\\obsidian-web\\docs\\plans\\livesync-implementation.md",
+      "size_bytes": 20690,
+      "has_translation": false
+    },
+    {
+      "path": "plans\\local-vaults-implementation.md",
+      "absolute": "C:\\Users\\fjuni\\OneDrive\\Documentos\\GitHub\\obsidian-web\\docs\\plans\\local-vaults-implementation.md",
+      "size_bytes": 40891,
+      "has_translation": false
+    },
+    {
+      "path": "plans\\mobile-bootstrap-cache.md",
+      "absolute": "C:\\Users\\fjuni\\OneDrive\\Documentos\\GitHub\\obsidian-web\\docs\\plans\\mobile-bootstrap-cache.md",
+      "size_bytes": 51419,
+      "has_translation": false
+    },
+    {
+      "path": "plans\\server-bootstrap-perf.md",
+      "absolute": "C:\\Users\\fjuni\\OneDrive\\Documentos\\GitHub\\obsidian-web\\docs\\plans\\server-bootstrap-perf.md",
+      "size_bytes": 28384,
+      "has_translation": false
+    },
+    {
+      "path": "plans\\server-shims.md",
+      "absolute": "C:\\Users\\fjuni\\OneDrive\\Documentos\\GitHub\\obsidian-web\\docs\\plans\\server-shims.md",
+      "size_bytes": 20135,
+      "has_translation": false
+    },
+    {
+      "path": "plans\\archive\\documentation-gaps.md",
+      "absolute": "C:\\Users\\fjuni\\OneDrive\\Documentos\\GitHub\\obsidian-web\\docs\\plans\\archive\\documentation-gaps.md",
+      "size_bytes": 14886,
+      "has_translation": false
+    },
+    {
+      "path": "plans\\archive\\fix-clipboard-recursion.md",
+      "absolute": "C:\\Users\\fjuni\\OneDrive\\Documentos\\GitHub\\obsidian-web\\docs\\plans\\archive\\fix-clipboard-recursion.md",
+      "size_bytes": 11093,
+      "has_translation": false
+    },
+    {
+      "path": "plans\\archive\\livesync-install.md",
+      "absolute": "C:\\Users\\fjuni\\OneDrive\\Documentos\\GitHub\\obsidian-web\\docs\\plans\\archive\\livesync-install.md",
+      "size_bytes": 16409,
+      "has_translation": false
+    },
+    {
+      "path": "plans\\archive\\livesync-requesturl.md",
+      "absolute": "C:\\Users\\fjuni\\OneDrive\\Documentos\\GitHub\\obsidian-web\\docs\\plans\\archive\\livesync-requesturl.md",
+      "size_bytes": 15258,
+      "has_translation": false
+    },
+    {
+      "path": "plans\\archive\\mobile-layout-implementation.md",
+      "absolute": "C:\\Users\\fjuni\\OneDrive\\Documentos\\GitHub\\obsidian-web\\docs\\plans\\archive\\mobile-layout-implementation.md",
+      "size_bytes": 18306,
+      "has_translation": false
+    },
+    {
+      "path": "plans\\archive\\opfs-geturi-fix.md",
+      "absolute": "C:\\Users\\fjuni\\OneDrive\\Documentos\\GitHub\\obsidian-web\\docs\\plans\\archive\\opfs-geturi-fix.md",
+      "size_bytes": 14542,
+      "has_translation": false
+    },
+    {
+      "path": "plans\\archive\\opfs-store.md",
+      "absolute": "C:\\Users\\fjuni\\OneDrive\\Documentos\\GitHub\\obsidian-web\\docs\\plans\\archive\\opfs-store.md",
+      "size_bytes": 28947,
+      "has_translation": false
+    },
+    {
+      "path": "plans\\archive\\opfs-vault-path.md",
+      "absolute": "C:\\Users\\fjuni\\OneDrive\\Documentos\\GitHub\\obsidian-web\\docs\\plans\\archive\\opfs-vault-path.md",
+      "size_bytes": 14801,
+      "has_translation": false
+    },
+    {
+      "path": "plans\\archive\\opfs-wire.md",
+      "absolute": "C:\\Users\\fjuni\\OneDrive\\Documentos\\GitHub\\obsidian-web\\docs\\plans\\archive\\opfs-wire.md",
+      "size_bytes": 23037,
+      "has_translation": false
+    },
+    {
+      "path": "plans\\archive\\plugin-injection-implementation.md",
+      "absolute": "C:\\Users\\fjuni\\OneDrive\\Documentos\\GitHub\\obsidian-web\\docs\\plans\\archive\\plugin-injection-implementation.md",
+      "size_bytes": 27539,
+      "has_translation": false
+    },
+    {
+      "path": "reports\\server-bootstrap-perf-calev.md",
+      "absolute": "C:\\Users\\fjuni\\OneDrive\\Documentos\\GitHub\\obsidian-web\\docs\\reports\\server-bootstrap-perf-calev.md",
+      "size_bytes": 12323,
+      "has_translation": false
+    },
+    {
+      "path": "reports\\obsidian-web\\server-bootstrap-perf-calev-fix.md",
+      "absolute": "C:\\Users\\fjuni\\OneDrive\\Documentos\\GitHub\\obsidian-web\\docs\\reports\\obsidian-web\\server-bootstrap-perf-calev-fix.md",
+      "size_bytes": 19994,
+      "has_translation": false
+    },
+    {
+      "path": "reports\\obsidian-web\\server-bootstrap-perf-calev-round4.md",
+      "absolute": "C:\\Users\\fjuni\\OneDrive\\Documentos\\GitHub\\obsidian-web\\docs\\reports\\obsidian-web\\server-bootstrap-perf-calev-round4.md",
+      "size_bytes": 13424,
+      "has_translation": false
+    }
+  ],
+  "pending": [
+    "dev-setup.md",
+    "investigations.md",
+    "system-plugin-dev-guide.md",
+    "walkthrough.md",
+    "decisions\\obsidian-web.md",
+    "plans\\EXECUTOR_DISPATCH.md",
+    "plans\\future-direction-client-only.md",
+    "plans\\livesync-implementation.md",
+    "plans\\local-vaults-implementation.md",
+    "plans\\mobile-bootstrap-cache.md",
+    "plans\\server-bootstrap-perf.md",
+    "plans\\server-shims.md",
+    "plans\\archive\\documentation-gaps.md",
+    "plans\\archive\\fix-clipboard-recursion.md",
+    "plans\\archive\\livesync-install.md",
+    "plans\\archive\\livesync-requesturl.md",
+    "plans\\archive\\mobile-layout-implementation.md",
+    "plans\\archive\\opfs-geturi-fix.md",
+    "plans\\archive\\opfs-store.md",
+    "plans\\archive\\opfs-vault-path.md",
+    "plans\\archive\\opfs-wire.md",
+    "plans\\archive\\plugin-injection-implementation.md",
+    "reports\\server-bootstrap-perf-calev.md",
+    "reports\\obsidian-web\\server-bootstrap-perf-calev-fix.md",
+    "reports\\obsidian-web\\server-bootstrap-perf-calev-round4.md"
+  ]
+}
